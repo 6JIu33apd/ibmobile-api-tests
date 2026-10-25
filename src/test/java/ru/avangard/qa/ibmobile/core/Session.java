@@ -1,70 +1,48 @@
 package ru.avangard.qa.ibmobile.core;
 
 import io.qameta.allure.Allure;
-import org.junit.jupiter.api.Assumptions;
 
-import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
-import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGOUT;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static ru.avangard.qa.ibmobile.core.Endpoint.AUTH_LOGIN;
+import static ru.avangard.qa.ibmobile.core.Endpoint.AUTH_LOGOUT;
 
 /**
- * Сессия пользователя: логин в начале теста, логаут в конце (даже если тест упал).
- * <pre>
- * try (var s = Session.login(User.MAIN)) {
- *     Request.to(ACC_LIST).as(s).post();
- * }
- * </pre>
- * Если для пользователя нет логина на текущем контуре, тест пропускается.
+ * Сессия. Обычно — одна на класс из {@link BaseTest}; своя ({@code try (var s = Session.login(...))}) нужна тестам,
+ * которые разлогинивают: логаут, смена логина/пароля. Логаут в close() не роняет тест.
  */
 public final class Session implements AutoCloseable {
 
-    private final User user;
-    private final String login;
-    private final String ticket;
-    private final ApiResponse loginResponse;
+    public final String login;
+    public final String password;
+    public final String ticket;
+    public final ApiResponse loginResponse;
     private boolean loggedOut;
 
-    private Session(User user, String login, String ticket, ApiResponse loginResponse) {
-        this.user = user;
+    private Session(String login, String password, ApiResponse loginResponse) {
         this.login = login;
-        this.ticket = ticket;
+        this.password = password;
+        this.ticket = loginResponse.path("ticket");
         this.loginResponse = loginResponse;
     }
 
-    public static Session login(User user) {
-        String login = user.login();
-        Assumptions.assumeTrue(login != null, () -> "Нет логина для " + user + " на контуре " + Config.env());
-        ApiResponse response = Request.to(AUTH_LOGIN)
+    /** Нет профиля на контуре — тест пропускается. */
+    public static Session login(Profile profile) {
+        assumeTrue(profile.login() != null, "Нет профиля " + profile + " на контуре " + Config.ENV);
+        return login(profile.login(), profile.password());
+    }
+
+    public static Session login(String login, String password) {
+        return new Session(login, password, Request.to(AUTH_LOGIN)
                 .param("login", login)
-                .param("password", user.password())
-                .post()
-                .success();
-        return new Session(user, login, response.path("ticket"), response);
+                .param("password", password)
+                .post().success());
     }
 
-    public User user() {
-        return user;
-    }
-
-    public String login() {
-        return login;
-    }
-
-    public String ticket() {
-        return ticket;
-    }
-
-    /** Ответ ручки логина, для проверок самого логина. */
-    public ApiResponse loginResponse() {
-        return loginResponse;
-    }
-
-    /** Явный логаут, когда его нужно проверить в тесте. */
     public ApiResponse logout() {
         loggedOut = true;
         return Request.to(AUTH_LOGOUT).as(this).delete();
     }
 
-    /** Логаут после теста: его сбой попадает в отчёт, но не роняет тест. */
     @Override
     public void close() {
         if (loggedOut) {

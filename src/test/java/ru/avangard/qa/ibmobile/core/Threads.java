@@ -7,42 +7,19 @@ import org.junit.platform.engine.support.hierarchical.ParallelExecutionConfigura
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Predicate;
 
-/** Число потоков JUnit = threads из env/&lt;env&gt;.properties (на test и prod — 1, там одна сессия на логин). */
+/** Потоки JUnit = threads контура: на test и prod 1, там одна сессия на логин. */
 public class Threads implements ParallelExecutionConfigurationStrategy {
 
     @Override
     public ParallelExecutionConfiguration createConfiguration(ConfigurationParameters parameters) {
-        int threads = Config.threads();
+        int n = Integer.parseInt(Config.get("threads"));
         return new ParallelExecutionConfiguration() {
-            @Override
-            public int getParallelism() {
-                return threads;
-            }
-
-            @Override
-            public int getMinimumRunnable() {
-                return threads;
-            }
-
-            @Override
-            public int getMaxPoolSize() {
-                return threads;
-            }
-
-            @Override
-            public int getCorePoolSize() {
-                return threads;
-            }
-
-            @Override
-            public int getKeepAliveSeconds() {
-                return 30;
-            }
-
-            @Override
-            public Predicate<? super ForkJoinPool> getSaturatePredicate() {
-                return pool -> true;
-            }
+            public int getParallelism() { return n; }
+            public int getMinimumRunnable() { return n; }
+            public int getMaxPoolSize() { return n; }
+            public int getCorePoolSize() { return n; }
+            public int getKeepAliveSeconds() { return 30; }
+            public Predicate<? super ForkJoinPool> getSaturatePredicate() { return pool -> true; }
         };
     }
 }

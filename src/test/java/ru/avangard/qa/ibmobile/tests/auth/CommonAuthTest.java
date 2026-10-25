@@ -6,19 +6,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import ru.avangard.qa.ibmobile.api.Endpoint;
+import ru.avangard.qa.ibmobile.core.Endpoint;
 import ru.avangard.qa.ibmobile.core.Request;
 import ru.avangard.qa.ibmobile.core.Session;
-import ru.avangard.qa.ibmobile.core.User;
+import ru.avangard.qa.ibmobile.core.Profile;
 
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
-import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
-import static ru.avangard.qa.ibmobile.api.Endpoint.PRIOR_INFO;
-import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_DOC;
+import static ru.avangard.qa.ibmobile.core.Endpoint.ACC_LIST;
+import static ru.avangard.qa.ibmobile.core.Endpoint.PREPARE_DOC;
+import static ru.avangard.qa.ibmobile.core.Endpoint.PRIOR_INFO;
+import static ru.avangard.qa.ibmobile.core.Endpoint.SEND_DOC;
 import static ru.avangard.qa.ibmobile.core.ErrorCode.AUTHORIZATION_REQUIRED;
 import static ru.avangard.qa.ibmobile.core.ErrorCode.SESSION_EXPIRED;
 
@@ -58,7 +58,7 @@ class CommonAuthTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("endpoints")
     void expiredTicket(Endpoint endpoint, Map<String, String> params) {
-        try (var s = Session.login(User.MAIN)) {
+        try (var s = Session.login(Profile.MAIN)) {
             s.logout();
             Request.to(endpoint).params(params).as(s).post().error(SESSION_EXPIRED);
         }

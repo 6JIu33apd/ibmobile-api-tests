@@ -4,21 +4,13 @@ import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
-import java.util.Optional;
-
-/** На prod запускаются только тесты с @Tag("prod") на методе или классе. Подключается автоматически. */
+/** На prod запускаются только классы с @Tag("prod"); проверка на уровне класса, чтобы не было даже логина в @BeforeAll. */
 public class ProdGuard implements ExecutionCondition {
 
     @Override
     public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
-        if (!Config.isProd() || context.getTestMethod().isEmpty()) {
-            return ConditionEvaluationResult.enabled("не prod");
-        }
-        for (Optional<ExtensionContext> c = Optional.of(context); c.isPresent(); c = c.get().getParent()) {
-            if (c.get().getTags().contains("prod")) {
-                return ConditionEvaluationResult.enabled("@Tag(\"prod\")");
-            }
-        }
-        return ConditionEvaluationResult.disabled("На prod запускаются только тесты с @Tag(\"prod\")");
+        return !"prod".equals(Config.ENV) || context.getTestClass().isEmpty() || context.getTags().contains("prod")
+                ? ConditionEvaluationResult.enabled("")
+                : ConditionEvaluationResult.disabled("На prod только классы с @Tag(\"prod\")");
     }
 }

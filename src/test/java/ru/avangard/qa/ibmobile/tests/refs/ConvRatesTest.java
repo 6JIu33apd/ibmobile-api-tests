@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static ru.avangard.qa.ibmobile.api.Endpoint.CONV_RATES;
+import static ru.avangard.qa.ibmobile.core.Endpoint.CONV_RATES;
 
 @Epic("Справочники")
 @Feature("Refs/conv_rates")

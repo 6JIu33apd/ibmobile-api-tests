@@ -1,75 +1,72 @@
 # ibmobile-api-tests
 
-Контрактные API-тесты бэкенда интернет-банка (Java 25, Maven, JUnit 5, Rest Assured, Allure).
+Контрактные API-тесты бэкенда интернет-банка: Java 25, Maven, JUnit 5, Rest Assured, Allure.
 
 ## Запуск
 
 ```
-mvnw test                                  # dev, текущий релиз
-mvnw test -Denv=test                       # контур: dev | test | prod
-mvnw test -Drelease=<номер релиза>         # версии ручек из versions/<номер релиза>.properties
-mvnw test -Dtest=AccListTest               # один класс
-mvnw allure:serve                          # открыть отчёт
+mvnw test                        # dev, релиз из config.properties
+mvnw test -Denv=test             # контур: dev | test | prod
+mvnw test -Drelease=3.19         # версии ручек из versions/3.19.properties
+mvnw test -Dtest=AccListTest     # один класс
+mvnw allure:serve                # отчёт
 ```
 
-На prod запускаются только тесты с `@Tag("prod")`. На test и prod тесты идут в один поток: там одна сессия на логин.
+На prod запускаются только классы с `@Tag("prod")`. Потоков — `threads` контура (на test и prod 1: одна сессия на логин).
 
-## Секреты
+## Конфиг
 
-`~/.ibmobile/secrets.properties`, вне репозитория:
-
-```
-dev.<логин>.password=...
-test.<логин>.password=...
-test.db.user=...
-test.db.password=...
-```
-
-## Где что лежит
-
-| Что | Где |
+| Файл | Что |
 |---|---|
-| Контуры (baseUrl, uid, потоки, фиксированные коды, БД) | `src/test/resources/env/<env>.properties` |
-| Логины пользователей по псевдонимам `User` | `src/test/resources/users/<env>.properties` |
-| Версии ручек по релизам | `src/test/resources/versions/<релиз>.properties` |
-| Схемы ответов | `src/test/resources/schemas/<ручка>/[<doc_type>/]<версия>.json` |
-| Шаблоны `doc_content` | `src/test/resources/templates/<doc_type>.json` |
-| Файлы для загрузки | `src/test/resources/files/` |
+| `config.properties` | контур и релиз по умолчанию, общие параметры |
+| `env/<env>.properties` | baseUrl, коды подтверждения, БД |
+| `versions/<релиз>.properties` | версии ручек; новый релиз — копия файла с правкой изменившихся строк |
+| `~/.ibmobile/secrets.properties` | профили `<env>.<профиль>.login/.password` (нет профиля — класс пропускается), `<env>.db.user/.password` |
 
 ## Новая ручка
 
-1. Константа в `api/Endpoint` (путь с `{v}`, если ручка версионная) и её версия в `versions/*.properties`.
-2. Если ручка с ticket — строка в `tests/auth/CommonAuthTest.endpoints()`.
-3. Класс `tests/<домен>/<Ручка>Test` с параметризованными кейсами:
+1. Константа в `core/Endpoint` (`{v}` — версия, `true` — MULTIPART) и версия в `versions/*.properties`.
+2. Ручка с ticket — строка в `CommonAuthTest.endpoints()`.
+3. Класс `tests/<домен>/<Ручка>Test`, кейсы — параметры. Логин один раз на класс:
 
 ```java
-try (var s = Session.login(user)) {
-    Request.to(ACC_LIST).as(s).param("account", acc).post()
-            .success()
-            .matchesSchema();
+@Login(MAIN)
+class AccListTest extends BaseTest {
+    @Test
+    void accList() {
+        Request.to(ACC_LIST).as(session).post().success().matchesSchema();
+    }
 }
 ```
 
-4. Схема: первый прогон без схемы упадёт и сохранит ответ в `target/schema-samples`.
-   Для ответов под разными пользователями — прогон с `-Dsamples=true`.
-   Затем запустить `tools.SchemaDraft` (из IDEA): он сделает черновик в `schemas/`.
-   Поле обязательно, только если оно было во всех образцах. Черновик проверить и поправить руками.
-   Существующие схемы генератор не трогает; чтобы пересоздать — удалить файл.
+   Классы с документами — `@Execution(SAME_THREAD)`: документ живёт в сессии.
+
+4. Схема: прогон без схемы падает и сохраняет ответ в `target/schema-samples` (`-Dsamples=true` — сохранять все ответы).
+   `tools.SchemaDraft` делает черновик в `schemas/`: поле обязательно, если оно есть во всех образцах. Черновик проверить руками.
 
 ## Документы
 
-`Doc/prior_info` → `Doc/prepare_doc` → `Doc/send_doc` в одной сессии (документ живёт 5 минут):
+Всё, что меняет данные: `prepare_doc` с `doc_type` → подтверждение способом из ответа → `send_doc`.
+`Doc.send` сам дёргает `send_confirm_sms` (SMS) или `show_scretch` (скретч-карта). Безобидные документы — `Confirm.NONE`.
 
 ```java
-var prepared = Request.to(PREPARE_DOC).as(s)
-        .param("doc_type", DOC)
-        .param("doc_content", Template.of(DOC).with("amount", 1.0))
-        .file("scan.jpg")                       // если нужен файл
-        .post().success().matchesSchema(DOC);
-
-Request.to(SEND_DOC).as(s)
-        .param("secure", Confirm.secure(s, prepared))
-        .post().success().matchesSchema(DOC);
+var prepared = Doc.prepare(session, DOC, Template.of(DOC).with("amount", amount), "scan.jpg").success().matchesSchema(DOC);
+Doc.send(session, prepared, Confirm.SMSPWD).success().matchesSchema(DOC);
 ```
 
-`Confirm` выбирает способ подтверждения из `authMethods` ответа `prepare_doc`.
+- Суммы — `BigDecimal`: double даёт `1.5699999999999998`, бэк такой документ отклоняет.
+- Похожий документ (те же счета и сумма), пока обрабатывается предыдущий, бэк отклоняет как дубль:
+  суммы случайные, кейсы класса — `@Execution(SAME_THREAD)`.
+
+## Своя сессия
+
+Тесты, которые разлогинивают (логаут, смена логина или пароля), работают на своих сессиях, без `BaseTest`:
+
+```java
+try (var s = Session.login(MAIN)) {
+    // смена пароля
+}
+try (var s = Session.login(MAIN.login(), newPassword)) {
+    // проверка
+}
+```

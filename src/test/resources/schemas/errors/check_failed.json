@@ -1,32 +1,90 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Отказ проверок документа (prepare_doc)",
+  "description": "Бизнес-отказ документа: prepare_doc и send_doc",
   "type": "object",
   "properties": {
-    "responseCode": { "type": "integer" },
-    "authMethods": { "type": "array", "items": { "type": "string" } },
+    "responseCode": {
+      "type": "integer"
+    },
+    "authMethods": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "secureCheck": {
+      "type": "object",
+      "properties": {
+        "errorExist": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "errorExist"
+      ],
+      "additionalProperties": false
+    },
     "checkResult": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
         "properties": {
-          "priority": { "type": "integer" },
-          "badItem": { "type": "string" },
-          "type": { "type": "string" },
-          "error": { "type": "boolean" },
-          "warning": { "type": "boolean" },
-          "info": { "type": "boolean" },
-          "errorMessage": { "type": "string" }
+          "priority": {
+            "type": "integer"
+          },
+          "badItem": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "error": {
+            "type": "boolean"
+          },
+          "warning": {
+            "type": "boolean"
+          },
+          "info": {
+            "type": "boolean"
+          },
+          "errorMessage": {
+            "type": "string"
+          }
         },
-        "required": ["priority", "type", "error", "warning", "info", "errorMessage"],
+        "required": [
+          "priority",
+          "type",
+          "error",
+          "warning",
+          "info",
+          "errorMessage"
+        ],
         "additionalProperties": false
       }
     },
-    "checkSuccess": { "type": "boolean", "enum": [false] },
-    "resultCode": { "type": "string", "enum": ["FAILED"] },
-    "resultMessage": { "type": "string" }
+    "checkSuccess": {
+      "type": "boolean",
+      "enum": [
+        false
+      ]
+    },
+    "resultCode": {
+      "type": "string",
+      "enum": [
+        "FAILED"
+      ]
+    },
+    "resultMessage": {
+      "type": "string"
+    }
   },
-  "required": ["responseCode", "checkResult", "checkSuccess", "resultCode", "resultMessage"],
+  "required": [
+    "responseCode",
+    "checkResult",
+    "checkSuccess",
+    "resultCode",
+    "resultMessage"
+  ],
   "additionalProperties": false
 }

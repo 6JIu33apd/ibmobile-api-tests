@@ -5,7 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Профиль, под которым {@link BaseTest} логинится один раз на класс. */
+/** Нестандартный профиль для сессии {@link BaseTest} (по умолчанию — {@link Profile#MAIN}). */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Login {

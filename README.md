@@ -20,22 +20,22 @@ mvnw allure:serve                # отчёт
 |---|---|
 | `config.properties` | контур и релиз по умолчанию, общие параметры |
 | `env/<env>.properties` | baseUrl, коды подтверждения, БД |
-| `versions/<релиз>.properties` | версии ручек; новый релиз — копия файла с правкой изменившихся строк |
+| `versions/<релиз>.properties` | версии ручек; новый релиз — копия файла с правкой изменившихся строк. Схема ищется по версии ручки: `-Drelease` переключает и пути, и схемы |
 | `~/.ibmobile/secrets.properties` | профили `<env>.<профиль>.login/.password` (нет профиля — класс пропускается), `<env>.db.user/.password` |
 
 ## Новая ручка
 
 1. Константа в `core/Endpoint` (`{v}` — версия, `true` — MULTIPART) и версия в `versions/*.properties`.
-2. Класс `tests/<домен>/<Ручка>Test`, кейсы — параметры. Все классы наследуют `BaseTest`, с `@Login` — логин один раз на класс:
+2. Класс `tests/<домен>/<Ручка>Test`, кейсы — параметры. Все классы наследуют `BaseTest`; `session()` — сессия на класс
+   под профилем `MAIN`, логин при первом обращении. Другой профиль — `@Login(PROFILE)` на классе:
 
 ```java
 @Epic(Section.ACCOUNTS)
 @Feature("Список счетов")
-@Login(MAIN)
 class AccListTest extends BaseTest {
     @Test
     void accList() {
-        Request.to(ACC_LIST).as(session).post().success().matchesSchema();
+        Request.to(ACC_LIST).as(session()).post().success().matchesSchema();
     }
 }
 ```
@@ -53,7 +53,7 @@ class AccListTest extends BaseTest {
    Имя кейса — что проверяется: `@DisplayName` на методе + `@ParameterizedTest(name = "...")` с изменяемой частью.
    Результаты прошлых прогонов очищаются перед каждым запуском.
 
-   Данные из других ручек — `data/`: например, `Accounts.of(session, Kind.DEBIT)` — номера рублёвых дебетовых счетов из acc_list.
+   Данные из других ручек — `data/`: например, `Accounts.of(session(), Kind.DEBIT)` — номера рублёвых дебетовых счетов из acc_list.
 
 3. Схема: прогон без схемы падает и сохраняет ответ в `target/schema-samples` (`-Dsamples=true` — сохранять все ответы).
    `tools.SchemaDraft` делает черновик в `schemas/`: поле обязательно, если оно есть во всех образцах. Черновик проверить руками.
@@ -66,8 +66,8 @@ class AccListTest extends BaseTest {
 Файлы из `files/` прикладываются аргументами `Doc.prepare` и сами попадают в `attachmentsList`.
 
 ```java
-var prepared = Doc.prepare(session, DOC, Template.of(DOC).with("text", text), "image.png").success().matchesSchema(DOC);
-Doc.send(session, prepared, Confirm.SMSPWD).success().matchesSchema(DOC);
+var prepared = Doc.prepare(session(), DOC, Template.of(DOC).with("text", text), "image.png").success().matchesSchema(DOC);
+Doc.send(session(), prepared, Confirm.SMSPWD).success().matchesSchema(DOC);
 ```
 
 - Суммы — `BigDecimal` (`ApiResponse.decimal`): double даёт `1.5699999999999998`, бэк такой документ отклоняет.
@@ -76,7 +76,7 @@ Doc.send(session, prepared, Confirm.SMSPWD).success().matchesSchema(DOC);
 
 ## Своя сессия
 
-Тесты, которые разлогинивают (логаут, смена логина или пароля), работают на своих сессиях — класс без `@Login`:
+Тесты, которые разлогинивают (логаут, смена логина или пароля), работают на своих сессиях, без `session()`:
 
 ```java
 try (var s = Session.login(MAIN)) {

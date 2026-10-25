@@ -7,6 +7,7 @@ import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.http.Method;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 
 import java.io.File;
 import java.net.URLConnection;
@@ -24,7 +25,7 @@ import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Запрос к ручке, параметры — как в Postman. uid подставляется всегда, ticket — через {@link #as(Session)}.
- * Коллекция в значении — несколько одноимённых параметров.
+ * Коллекция в значении — несколько одноимённых параметров. Тело — URLENC, у ручек с {@link Endpoint#multipart} — MULTIPART.
  */
 public final class Request {
 
@@ -73,15 +74,9 @@ public final class Request {
         return Allure.step(endpoint + ": " + method + " " + path, () -> {
             var spec = RestAssured.given().baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
             if (endpoint.multipart) {
-                params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
-                        new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
-                files.forEach(file -> spec.multiPart("file", file, contentType(file.getName())));
+                multipart(spec);
             } else {
-                // тело собирается вручную: allure-rest-assured падает на одноимённых form-параметрах
-                spec.contentType(ContentType.URLENC.withCharset(UTF_8)).body(params.entrySet().stream()
-                        .flatMap(e -> values(e.getValue()).stream()
-                                .map(v -> URLEncoder.encode(e.getKey(), UTF_8) + "=" + URLEncoder.encode(v, UTF_8)))
-                        .collect(Collectors.joining("&")));
+                spec.contentType(ContentType.URLENC.withCharset(UTF_8)).body(urlencoded());
             }
             Response response = spec.request(method, path);
             // ошибки сервера роняют любой тест, в том числе негативный
@@ -92,6 +87,21 @@ public final class Request {
             }
             return new ApiResponse(endpoint, response);
         });
+    }
+
+    /** Тело собирается вручную: allure-rest-assured падает на одноимённых form-параметрах. */
+    private String urlencoded() {
+        return params.entrySet().stream()
+                .flatMap(e -> values(e.getValue()).stream()
+                        .map(v -> URLEncoder.encode(e.getKey(), UTF_8) + "=" + URLEncoder.encode(v, UTF_8)))
+                .collect(Collectors.joining("&"));
+    }
+
+    /** Параметры — текстовые части, файлы — части file. */
+    private void multipart(RequestSpecification spec) {
+        params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
+                new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
+        files.forEach(file -> spec.multiPart("file", file, contentType(file.getName())));
     }
 
     private static List<String> values(Object value) {

@@ -15,7 +15,6 @@ import ru.avangard.qa.ibmobile.core.ApiResponse;
 import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Doc;
 import ru.avangard.qa.ibmobile.core.Doc.Confirm;
-import ru.avangard.qa.ibmobile.core.Login;
 import ru.avangard.qa.ibmobile.core.Section;
 import ru.avangard.qa.ibmobile.core.Template;
 
@@ -25,12 +24,10 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static ru.avangard.qa.ibmobile.core.Profile.MAIN;
 
 @Epic(Section.STATEMENTS)
 @Feature("Заявление в свободной форме")
 @Tag("mutating")
-@Login(MAIN)
 @Execution(ExecutionMode.SAME_THREAD) // документ живёт в сессии
 class IbFreeFormatStatementTest extends BaseTest {
 
@@ -51,7 +48,7 @@ class IbFreeFormatStatementTest extends BaseTest {
         assertThat(prepared.<String>path("doc.text")).as("текст заявления").isEqualTo(TEXT);
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").isEqualTo(files);
 
-        Doc.send(session, prepared, Confirm.NONE).success().matchesSchema(DOC);
+        Doc.send(session(), prepared, Confirm.NONE).success().matchesSchema(DOC);
     }
 
     @Story("Негативные")
@@ -81,6 +78,6 @@ class IbFreeFormatStatementTest extends BaseTest {
     }
 
     private ApiResponse prepare(Template content, String... files) {
-        return Doc.prepare(session, DOC, content, files);
+        return Doc.prepare(session(), DOC, content, files);
     }
 }

@@ -14,6 +14,7 @@ public enum Endpoint {
 
     private final String path;
     private final String title;
+    /** prepare_doc и немногие другие; остальные ручки — URLENC. */
     final boolean multipart;
 
     Endpoint(String path, String title) {

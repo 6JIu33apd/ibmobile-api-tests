@@ -10,23 +10,27 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Базовый класс всех тестов.
- * На prod класс без @Tag("prod") пропускается целиком. С {@link Login} — сессия на класс
- * (нет профиля на контуре — класс пропускается); без него тест сам открывает сессии через {@link Session#login}.
+ * Базовый класс всех тестов. На prod класс без @Tag("prod") пропускается целиком.
+ * {@link #session()} — сессия на класс под {@link Profile#MAIN} или профилем из {@link Login};
+ * логин — при первом обращении, логаут — после класса. Тесты, которые разлогинивают, открывают свои через {@link Session#login}.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BaseTest {
 
-    protected Session session;
+    private Session session;
 
     @BeforeAll
-    void login() {
+    void prodGuard() {
         assumeTrue(!"prod".equals(Config.ENV) || Arrays.stream(getClass().getAnnotationsByType(Tag.class))
                 .anyMatch(tag -> "prod".equals(tag.value())), "На prod только классы с @Tag(\"prod\")");
-        Login login = getClass().getAnnotation(Login.class);
-        if (login != null) {
-            session = Session.login(login.value());
+    }
+
+    protected synchronized Session session() {
+        if (session == null) {
+            Login login = getClass().getAnnotation(Login.class);
+            session = Session.login(login != null ? login.value() : Profile.MAIN);
         }
+        return session;
     }
 
     @AfterAll

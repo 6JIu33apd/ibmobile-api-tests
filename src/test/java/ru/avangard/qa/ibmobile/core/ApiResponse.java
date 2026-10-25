@@ -33,8 +33,9 @@ public final class ApiResponse {
     }
 
     public ApiResponse success() {
-        assertThat(response.<Object>path("errorCode")).as("%s: %s", endpoint, response.asString()).isNull();
-        assertThat(response.<String>path("resultCode")).as("%s: %s", endpoint, response.asString()).isNotEqualTo("FAILED");
+        if (response.path("errorCode") != null || "FAILED".equals(response.path("resultCode"))) {
+            fail("%s вернул отказ: %s", endpoint, response.asString());
+        }
         return this;
     }
 
@@ -44,7 +45,7 @@ public final class ApiResponse {
         return matches(expected.schema);
     }
 
-    /** Отказ проверок документа: в checkResult есть поле badItem с сообщением message. */
+    /** Бизнес-отказ: в checkResult есть поле badItem с сообщением message. */
     public ApiResponse rejected(String badItem, String message) {
         assertThat(response.<List<Map<String, Object>>>path("checkResult")).as("checkResult: %s", response.asString())
                 .extracting(c -> c.get("badItem"), c -> c.get("errorMessage"))

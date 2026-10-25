@@ -17,7 +17,6 @@ import ru.avangard.qa.ibmobile.core.ApiResponse;
 import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Doc;
 import ru.avangard.qa.ibmobile.core.Doc.Confirm;
-import ru.avangard.qa.ibmobile.core.Login;
 import ru.avangard.qa.ibmobile.core.Request;
 import ru.avangard.qa.ibmobile.core.Section;
 import ru.avangard.qa.ibmobile.core.Template;
@@ -35,12 +34,10 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static ru.avangard.qa.ibmobile.core.Endpoint.PREPARE_DOC;
 import static ru.avangard.qa.ibmobile.core.ErrorCode.AUTHORIZATION_REQUIRED;
 import static ru.avangard.qa.ibmobile.core.ErrorCode.INVALID_PARAMETERS;
-import static ru.avangard.qa.ibmobile.core.Profile.MAIN;
 
 @Epic(Section.PAYMENTS)
 @Feature("Перевод между своими счетами")
 @Tag("mutating")
-@Login(MAIN)
 @Execution(ExecutionMode.SAME_THREAD) // документ живёт в сессии; похожий перевод, пока обрабатывается предыдущий, — дубль
 class IbOurAccTransferTest extends BaseTest {
 
@@ -52,7 +49,7 @@ class IbOurAccTransferTest extends BaseTest {
 
     @BeforeAll
     void accounts() {
-        var debit = Accounts.of(session, Kind.DEBIT);
+        var debit = Accounts.of(session(), Kind.DEBIT);
         assumeTrue(debit.size() >= 2, "Нужны два рублёвых дебетовых счёта");
         from = debit.get(0);
         to = debit.get(1);
@@ -68,12 +65,12 @@ class IbOurAccTransferTest extends BaseTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("transfers")
     void transfer(String title, Kind kind, Confirm confirm) {
-        var accounts = Accounts.of(session, kind);
+        var accounts = Accounts.of(session(), kind);
         assumeFalse(accounts.isEmpty(), "Нет счёта: " + kind);
         var amount = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2); // та же сумма — дубль
 
         var prepared = prepare(content(accounts.getFirst(), to, amount)).success().matchesSchema(DOC);
-        var sent = Doc.send(session, prepared, confirm).success().matchesSchema(DOC);
+        var sent = Doc.send(session(), prepared, confirm).success().matchesSchema(DOC);
         assertThat(sent.decimal("doc.amount")).as("сумма").isEqualByComparingTo(amount);
     }
 
@@ -126,6 +123,6 @@ class IbOurAccTransferTest extends BaseTest {
     }
 
     private ApiResponse prepare(Template content) {
-        return Doc.prepare(session, DOC, content);
+        return Doc.prepare(session(), DOC, content);
     }
 }

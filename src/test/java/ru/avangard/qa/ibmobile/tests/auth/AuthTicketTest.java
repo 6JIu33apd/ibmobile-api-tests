@@ -17,7 +17,7 @@ import static ru.avangard.qa.ibmobile.core.ErrorCode.SESSION_EXPIRED;
 import static ru.avangard.qa.ibmobile.core.ErrorCode.WRONG_CREDENTIALS;
 import static ru.avangard.qa.ibmobile.core.Profile.MAIN;
 
-/** Логин и логаут проверяются на своих сессиях, поэтому без @Login. */
+/** Логин и логаут проверяются на своих сессиях, session() класса не используется. */
 @Epic(Section.AUTH)
 @Feature("Логин и логаут")
 class AuthTicketTest extends BaseTest {

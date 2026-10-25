@@ -1,11 +1,18 @@
 package ru.avangard.qa.ibmobile.core;
 
-/** Бизнес-ошибки. Слои бэка отвечают в разных форматах — у каждой ошибки своя схема из schemas/errors. */
+import java.util.Arrays;
+
+/**
+ * Допустимые технические ошибки с errorCode; любой другой errorCode — ошибка сервера и роняет тест.
+ * Бизнес-ошибки приходят отказом проверок (checkResult с badItem) — см. {@link ApiResponse#rejected}.
+ * Слои бэка отвечают в разных форматах — у каждой ошибки своя схема из schemas/errors.
+ */
 public enum ErrorCode {
 
     AUTHORIZATION_REQUIRED(1, "authorization_required", "error"),
     INVALID_PARAMETERS(4, "invalid_parameters", "error"),
-    SESSION_EXPIRED(5, "session_expired", "error_result");
+    SESSION_EXPIRED(5, "session_expired", "error_result"),
+    WRONG_CREDENTIALS(1000, "Некорректный логин или пароль пользователя.", "error");
 
     final int code;
     final String desc;
@@ -15,5 +22,9 @@ public enum ErrorCode {
         this.code = code;
         this.desc = desc;
         this.schema = "schemas/errors/" + schema + ".json";
+    }
+
+    static boolean allowed(int code) {
+        return Arrays.stream(values()).anyMatch(e -> e.code == code);
     }
 }

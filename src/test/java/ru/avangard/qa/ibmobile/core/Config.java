@@ -33,17 +33,21 @@ public final class Config {
 
     /** null, если не задан. */
     public static String find(String key) {
-        String value = PROPS.getProperty(key, "").trim();
-        return value.isEmpty() ? null : value;
+        return value(PROPS, key);
     }
 
     public static String version(Endpoint endpoint) {
         return required(VERSIONS, endpoint.name());
     }
 
-    private static String required(Properties props, String key) {
+    private static String value(Properties props, String key) {
         String value = props.getProperty(key, "").trim();
-        if (value.isEmpty()) {
+        return value.isEmpty() ? null : value;
+    }
+
+    private static String required(Properties props, String key) {
+        String value = value(props, key);
+        if (value == null) {
             throw new IllegalStateException("Не задан " + key + " (env=" + ENV + ", release=" + RELEASE + ")");
         }
         return value;

@@ -1,0 +1,101 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "responseCode" : {
+      "type" : "integer"
+    },
+    "secureCheck" : {
+      "type" : "object",
+      "properties" : {
+        "errorExist" : {
+          "type" : "boolean"
+        }
+      },
+      "required" : [ "errorExist" ],
+      "additionalProperties" : false
+    },
+    "doc" : {
+      "type" : "object",
+      "properties" : {
+        "docId" : {
+          "type" : "integer"
+        },
+        "docDatBnk" : {
+          "type" : "string"
+        },
+        "docDate" : {
+          "type" : "string"
+        },
+        "fullName" : {
+          "type" : "string"
+        },
+        "text" : {
+          "type" : "string"
+        },
+        "needConfirm" : {
+          "type" : "boolean"
+        },
+        "srcId" : {
+          "type" : "integer"
+        },
+        "docTypeDesc" : {
+          "type" : "string"
+        },
+        "docStatusDesc" : {
+          "type" : "string"
+        },
+        "ibDocStatusDesc" : {
+          "type" : "string"
+        },
+        "attachmentsList" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "attachId" : {
+                "type" : "integer"
+              },
+              "filename" : {
+                "type" : "string"
+              },
+              "filesize" : {
+                "type" : "integer"
+              },
+              "md5" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "attachId", "filename", "filesize", "md5" ],
+            "additionalProperties" : false
+          }
+        },
+        "docType" : {
+          "type" : "string"
+        },
+        "docStatus" : {
+          "type" : "string"
+        },
+        "availableForPrinting" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "docId", "docDatBnk", "docDate", "fullName", "text", "needConfirm", "srcId", "docTypeDesc", "docStatusDesc", "ibDocStatusDesc", "attachmentsList", "docType", "docStatus", "availableForPrinting" ],
+      "additionalProperties" : false
+    },
+    "checkResult" : {
+      "type" : "array"
+    },
+    "checkSuccess" : {
+      "type" : "boolean"
+    },
+    "resultCode" : {
+      "type" : "string"
+    },
+    "resultMessage" : {
+      "type" : "string"
+    }
+  },
+  "required" : [ "responseCode", "secureCheck", "doc", "checkResult", "checkSuccess", "resultCode", "resultMessage" ],
+  "additionalProperties" : false
+}

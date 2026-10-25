@@ -30,6 +30,11 @@ public final class Template {
         return this;
     }
 
+    public Template without(String field) {
+        json.remove(field);
+        return this;
+    }
+
     @Override
     public String toString() {
         return json.toString();

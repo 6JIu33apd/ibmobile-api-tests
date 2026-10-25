@@ -1,0 +1,92 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "responseCode" : {
+      "type" : "integer"
+    },
+    "authMethod" : {
+      "type" : "string"
+    },
+    "noneAuthInit" : {
+      "type" : "object",
+      "properties" : {
+        "code" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "code" ],
+      "additionalProperties" : false
+    },
+    "doc" : {
+      "type" : "object",
+      "properties" : {
+        "docDate" : {
+          "type" : "string"
+        },
+        "fullName" : {
+          "type" : "string"
+        },
+        "text" : {
+          "type" : "string"
+        },
+        "needConfirm" : {
+          "type" : "boolean"
+        },
+        "docTypeDesc" : {
+          "type" : "string"
+        },
+        "attachmentsList" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "filename" : {
+                "type" : "string"
+              },
+              "filesize" : {
+                "type" : "integer"
+              },
+              "md5" : {
+                "type" : "string"
+              },
+              "contentType" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "filename", "filesize", "md5", "contentType" ],
+            "additionalProperties" : false
+          }
+        },
+        "docType" : {
+          "type" : "string"
+        },
+        "availableForPrinting" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "docDate", "fullName", "text", "needConfirm", "docTypeDesc", "attachmentsList", "docType", "availableForPrinting" ],
+      "additionalProperties" : false
+    },
+    "authMethods" : {
+      "type" : "array",
+      "items" : {
+        "type" : "string"
+      }
+    },
+    "checkResult" : {
+      "type" : "array"
+    },
+    "checkSuccess" : {
+      "type" : "boolean"
+    },
+    "resultCode" : {
+      "type" : "string"
+    },
+    "resultMessage" : {
+      "type" : "string"
+    }
+  },
+  "required" : [ "responseCode", "authMethod", "noneAuthInit", "doc", "authMethods", "checkResult", "checkSuccess", "resultCode", "resultMessage" ],
+  "additionalProperties" : false
+}

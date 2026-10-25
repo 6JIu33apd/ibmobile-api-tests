@@ -3,15 +3,22 @@ package ru.avangard.qa.ibmobile.core;
 import io.qameta.allure.Allure;
 import io.restassured.response.Response;
 
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.tuple;
 
-/** Ответ ручки. Бизнес-ошибки приходят с HTTP 200: errorCode или resultCode=FAILED. */
+/**
+ * Ответ ручки. Отказы приходят с HTTP 200: бизнес-отказ — checkResult с badItem ({@link #rejected}),
+ * техническая ошибка — допустимый errorCode ({@link #error}). Ошибки сервера отсекает {@link Request}.
+ */
 public final class ApiResponse {
 
     /** Ответы без схемы (и все при -Dsamples=true) — материал для tools.SchemaDraft. */
@@ -37,6 +44,14 @@ public final class ApiResponse {
         return matches(expected.schema);
     }
 
+    /** Отказ проверок документа: в checkResult есть поле badItem с сообщением message. */
+    public ApiResponse rejected(String badItem, String message) {
+        assertThat(response.<List<Map<String, Object>>>path("checkResult")).as("checkResult: %s", response.asString())
+                .extracting(c -> c.get("badItem"), c -> c.get("errorMessage"))
+                .contains(tuple(badItem, message));
+        return matches("schemas/errors/check_failed.json");
+    }
+
     public ApiResponse matchesSchema() {
         return matches(endpoint.schema(null));
     }
@@ -48,6 +63,11 @@ public final class ApiResponse {
 
     public <T> T path(String path) {
         return response.path(path);
+    }
+
+    /** Денежное значение без потери точности. */
+    public BigDecimal decimal(String path) {
+        return new BigDecimal(response.path(path).toString());
     }
 
     private ApiResponse matches(String schema) {

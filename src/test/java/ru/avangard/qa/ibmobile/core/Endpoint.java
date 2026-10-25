@@ -8,13 +8,12 @@ public enum Endpoint {
     SEND_CONFIRM_SMS("Auth/send_confirm_sms/{v}", "Отправка SMS-кода"),
     SHOW_SCRETCH("Auth/show_scretch/{v}", "Запрос кода со скретч-карты"),
     ACC_LIST("Statement/acc_list/{v}", "Список счетов"),
-    PRIOR_INFO("Doc/prior_info/{v}", "Данные для документа"),
+    ACC_DETAILS("Statement/acc_details/{v}", "Деталка счета"),
     PREPARE_DOC("Doc/prepare_doc/{v}", "Подготовка документа", true),
-    SEND_DOC("Doc/send_doc/{v}", "Отправка документа"),
-    CONV_RATES("Refs/conv_rates", "Курсы конвертации");
+    SEND_DOC("Doc/send_doc/{v}", "Отправка документа");
 
     private final String path;
-    final String title;
+    private final String title;
     final boolean multipart;
 
     Endpoint(String path, String title) {
@@ -29,6 +28,11 @@ public enum Endpoint {
 
     String path() {
         return path.contains("{v}") ? path.replace("{v}", Config.version(this)) : path;
+    }
+
+    @Override
+    public String toString() {
+        return title;
     }
 
     /** schemas/&lt;ручка&gt;/[&lt;вариант&gt;/]&lt;версия или schema&gt;.json */

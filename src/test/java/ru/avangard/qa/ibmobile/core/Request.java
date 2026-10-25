@@ -9,6 +9,7 @@ import io.restassured.http.Method;
 import io.restassured.response.Response;
 
 import java.io.File;
+import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Запрос к ручке, параметры — как в Postman. uid подставляется всегда, ticket — через {@link #as(Session)}.
@@ -48,39 +50,32 @@ public final class Request {
         return this;
     }
 
-    public Request params(Map<String, ?> values) {
-        params.putAll(values);
+    /** Файл из src/test/resources/files. */
+    Request file(String name) {
+        files.add(new File("src/test/resources/files", name));
         return this;
     }
 
-    /** Файл из src/test/resources/files. */
-    public Request file(String name) {
-        files.add(new File("src/test/resources/files", name));
-        return this;
+    static String contentType(String fileName) {
+        return URLConnection.guessContentTypeFromName(fileName);
     }
 
     public ApiResponse post() {
         return send(Method.POST);
     }
 
-    public ApiResponse get() {
-        return send(Method.GET);
-    }
-
-    public ApiResponse delete() {
+    ApiResponse delete() {
         return send(Method.DELETE);
     }
 
     private ApiResponse send(Method method) {
         String path = endpoint.path();
-        return Allure.step(endpoint.title + ": " + method + " " + path, () -> {
+        return Allure.step(endpoint + ": " + method + " " + path, () -> {
             var spec = RestAssured.given().baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
             if (endpoint.multipart) {
                 params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
                         new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
-                files.forEach(file -> spec.multiPart("file", file));
-            } else if (method == Method.GET) {
-                params.forEach((name, value) -> spec.queryParam(name, String.valueOf(value)));
+                files.forEach(file -> spec.multiPart("file", file, contentType(file.getName())));
             } else {
                 // тело собирается вручную: allure-rest-assured падает на одноимённых form-параметрах
                 spec.contentType(ContentType.URLENC.withCharset(UTF_8)).body(params.entrySet().stream()
@@ -89,7 +84,12 @@ public final class Request {
                         .collect(Collectors.joining("&")));
             }
             Response response = spec.request(method, path);
-            assertThat(response.statusCode()).as("HTTP %s %s: %s", method, path, response.asString()).isEqualTo(200);
+            // ошибки сервера роняют любой тест, в том числе негативный
+            assertThat(response.statusCode()).as("Ошибка сервера: HTTP %s %s: %s", method, path, response.asString()).isEqualTo(200);
+            Integer errorCode = response.path("errorCode");
+            if (errorCode != null && !ErrorCode.allowed(errorCode)) {
+                fail("Ошибка сервера: недопустимый errorCode %s %s: %s", method, path, response.asString());
+            }
             return new ApiResponse(endpoint, response);
         });
     }

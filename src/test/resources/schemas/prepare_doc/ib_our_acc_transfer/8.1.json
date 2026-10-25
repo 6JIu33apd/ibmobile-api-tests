@@ -1,0 +1,248 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "responseCode" : {
+      "type" : "integer"
+    },
+    "authMethod" : {
+      "type" : "string"
+    },
+    "scretchInit" : {
+      "type" : "object",
+      "properties" : {
+        "responseCode" : {
+          "type" : "integer"
+        },
+        "badCount" : {
+          "type" : "integer"
+        },
+        "restCount" : {
+          "type" : "integer"
+        },
+        "cardNumber" : {
+          "type" : "string"
+        },
+        "resultCode" : {
+          "type" : "string"
+        },
+        "resultMessage" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "responseCode", "badCount", "restCount", "cardNumber", "resultCode", "resultMessage" ],
+      "additionalProperties" : false
+    },
+    "smsInit" : {
+      "type" : "object",
+      "properties" : {
+        "responseCode" : {
+          "type" : "integer"
+        },
+        "phone" : {
+          "type" : "string"
+        },
+        "startDate" : {
+          "type" : "string"
+        },
+        "resultCode" : {
+          "type" : "string"
+        },
+        "resultMessage" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "responseCode", "phone", "startDate", "resultCode", "resultMessage" ],
+      "additionalProperties" : false
+    },
+    "qrInit" : {
+      "type" : "object",
+      "properties" : {
+        "responseCode" : {
+          "type" : "integer"
+        },
+        "longTicketStatus" : {
+          "type" : "string"
+        },
+        "pk" : {
+          "type" : "string"
+        },
+        "qrLink" : {
+          "type" : "string"
+        },
+        "resultCode" : {
+          "type" : "string"
+        },
+        "resultMessage" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "responseCode", "longTicketStatus", "pk", "qrLink", "resultCode", "resultMessage" ],
+      "additionalProperties" : false
+    },
+    "doc" : {
+      "type" : "object",
+      "properties" : {
+        "accDeb" : {
+          "type" : "string"
+        },
+        "accCred" : {
+          "type" : "string"
+        },
+        "amountDeb" : {
+          "type" : "number"
+        },
+        "curr" : {
+          "type" : "string"
+        },
+        "amount" : {
+          "type" : "number"
+        },
+        "totalAmount" : {
+          "type" : "number"
+        },
+        "totalAmountDeb" : {
+          "type" : "number"
+        },
+        "totalAmountCurr" : {
+          "type" : "string"
+        },
+        "commDebExist" : {
+          "type" : "boolean"
+        },
+        "srcType" : {
+          "type" : "string"
+        },
+        "docTypeDesc" : {
+          "type" : "string"
+        },
+        "docType" : {
+          "type" : "string"
+        },
+        "availableForPrinting" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "accDeb", "accCred", "amountDeb", "curr", "amount", "totalAmount", "totalAmountDeb", "totalAmountCurr", "commDebExist", "srcType", "docTypeDesc", "docType", "availableForPrinting" ],
+      "additionalProperties" : false
+    },
+    "authMethods" : {
+      "type" : "array",
+      "items" : {
+        "type" : "string"
+      }
+    },
+    "checkResult" : {
+      "type" : "array"
+    },
+    "checkSuccess" : {
+      "type" : "boolean"
+    },
+    "payInfo" : {
+      "type" : "object",
+      "properties" : {
+        "debInfo" : {
+          "type" : "object",
+          "properties" : {
+            "currency" : {
+              "type" : "string"
+            },
+            "upperCurrency" : {
+              "type" : "string"
+            },
+            "otb" : {
+              "type" : "number"
+            },
+            "otbAfter" : {
+              "type" : "number"
+            },
+            "amount" : {
+              "type" : "number"
+            },
+            "totalAmount" : {
+              "type" : "number"
+            },
+            "comms" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "comm" : {
+                    "type" : "number"
+                  },
+                  "currency" : {
+                    "type" : "string"
+                  },
+                  "feePercentage" : {
+                    "type" : "number"
+                  },
+                  "feeAmount" : {
+                    "type" : "number"
+                  },
+                  "commTypeName" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "comm", "currency", "feePercentage", "feeAmount", "commTypeName" ],
+                "additionalProperties" : false
+              }
+            },
+            "currencyDeb" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "currency", "upperCurrency", "otb", "otbAfter", "amount", "totalAmount", "currencyDeb" ],
+          "additionalProperties" : false
+        },
+        "credInfo" : {
+          "type" : "object",
+          "properties" : {
+            "currency" : {
+              "type" : "string"
+            },
+            "upperCurrency" : {
+              "type" : "string"
+            },
+            "otb" : {
+              "type" : "number"
+            },
+            "otbAfter" : {
+              "type" : "number"
+            },
+            "amount" : {
+              "type" : "number"
+            },
+            "totalAmount" : {
+              "type" : "number"
+            },
+            "currencyCred" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "currency", "upperCurrency", "otb", "otbAfter", "amount", "totalAmount", "currencyCred" ],
+          "additionalProperties" : false
+        }
+      },
+      "required" : [ "debInfo", "credInfo" ],
+      "additionalProperties" : false
+    },
+    "resultCode" : {
+      "type" : "string"
+    },
+    "resultMessage" : {
+      "type" : "string"
+    },
+    "noneAuthInit" : {
+      "type" : "object",
+      "properties" : {
+        "code" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "code" ],
+      "additionalProperties" : false
+    }
+  },
+  "required" : [ "responseCode", "authMethod", "doc", "authMethods", "checkResult", "checkSuccess", "payInfo", "resultCode", "resultMessage" ],
+  "additionalProperties" : false
+}

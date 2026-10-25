@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Ошибка: только код и описание",
+  "type": "object",
+  "properties": {
+    "errorCode": { "type": "integer" },
+    "errorDesc": { "type": "string" }
+  },
+  "required": ["errorCode", "errorDesc"],
+  "additionalProperties": false
+}

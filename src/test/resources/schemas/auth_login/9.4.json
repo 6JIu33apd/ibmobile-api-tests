@@ -1,0 +1,208 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "ticket" : {
+      "type" : "string"
+    },
+    "accounts" : {
+      "type" : "array"
+    },
+    "clientInfo" : {
+      "type" : "object",
+      "properties" : {
+        "surname" : {
+          "type" : "string"
+        },
+        "name1" : {
+          "type" : "string"
+        },
+        "name2" : {
+          "type" : "string"
+        },
+        "inn" : {
+          "type" : "string"
+        },
+        "sessionTimeout" : {
+          "type" : "integer"
+        },
+        "nextDocNumber" : {
+          "type" : "integer"
+        },
+        "newsCount" : {
+          "type" : "integer"
+        },
+        "npdTaxCount" : {
+          "type" : "integer"
+        },
+        "tester" : {
+          "type" : "boolean"
+        },
+        "rezident" : {
+          "type" : "boolean"
+        },
+        "male" : {
+          "type" : "boolean"
+        },
+        "female" : {
+          "type" : "boolean"
+        },
+        "smsConfirmationExcluded" : {
+          "type" : "boolean"
+        },
+        "newSignAppletEnabled" : {
+          "type" : "boolean"
+        },
+        "paymentEnabled" : {
+          "type" : "boolean"
+        },
+        "valEnabled" : {
+          "type" : "boolean"
+        },
+        "wuenabled" : {
+          "type" : "boolean"
+        },
+        "mdepEnabled" : {
+          "type" : "boolean"
+        },
+        "gmapEnabled" : {
+          "type" : "boolean"
+        },
+        "clearPaspNum" : {
+          "type" : "string"
+        },
+        "otpEnabled" : {
+          "type" : "boolean"
+        },
+        "fullName" : {
+          "type" : "string"
+        },
+        "payName" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "surname", "name1", "name2", "inn", "sessionTimeout", "nextDocNumber", "newsCount", "npdTaxCount", "tester", "rezident", "male", "female", "smsConfirmationExcluded", "newSignAppletEnabled", "paymentEnabled", "valEnabled", "wuenabled", "mdepEnabled", "gmapEnabled", "clearPaspNum", "otpEnabled", "fullName", "payName" ],
+      "additionalProperties" : false
+    },
+    "pushActive" : {
+      "type" : "boolean"
+    },
+    "languageRU" : {
+      "type" : "boolean"
+    },
+    "pushTargetPhoneName" : {
+      "type" : "string"
+    },
+    "thisPushTarget" : {
+      "type" : "boolean"
+    },
+    "forcePushStatus" : {
+      "type" : "integer"
+    },
+    "pushAvailable" : {
+      "type" : "integer"
+    },
+    "pinChangeNeededCount" : {
+      "type" : "integer"
+    },
+    "hasWesternUnionCountry" : {
+      "type" : "boolean"
+    },
+    "featureDenyList" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "featureName" : {
+            "type" : "string"
+          },
+          "featureDeny" : {
+            "type" : "integer"
+          },
+          "isFeatureDeny" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "featureName", "featureDeny", "isFeatureDeny" ],
+        "additionalProperties" : false
+      }
+    },
+    "featureCardPayList" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "catId" : {
+            "type" : "integer"
+          },
+          "catStatus" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "catId", "catStatus" ],
+        "additionalProperties" : false
+      }
+    },
+    "featureDialogTestList" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "featureName" : {
+            "type" : "string"
+          },
+          "featureStatus" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "featureName", "featureStatus" ],
+        "additionalProperties" : false
+      }
+    },
+    "lastUnreadNewsList" : {
+      "type" : "array"
+    },
+    "sbpPhone" : {
+      "type" : "string"
+    },
+    "sbpOperLimit" : {
+      "type" : "integer"
+    },
+    "basicPhone" : {
+      "type" : "string"
+    },
+    "warningBlock" : {
+      "type" : "boolean"
+    },
+    "nameForGreeting" : {
+      "type" : "string"
+    },
+    "shouldPromptNewLoginAndPassword" : {
+      "type" : "boolean"
+    },
+    "onboardingShown" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "isShown" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "id", "name", "isShown" ],
+        "additionalProperties" : false
+      }
+    }
+  },
+  "required" : [ "ticket", "accounts", "clientInfo", "pushActive", "languageRU", "pushTargetPhoneName", "thisPushTarget", "forcePushStatus", "pushAvailable", "pinChangeNeededCount", "hasWesternUnionCountry", "featureDenyList", "featureCardPayList", "featureDialogTestList", "lastUnreadNewsList", "sbpPhone", "sbpOperLimit", "basicPhone", "warningBlock", "nameForGreeting", "shouldPromptNewLoginAndPassword", "onboardingShown" ],
+  "additionalProperties" : false
+}

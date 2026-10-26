@@ -60,9 +60,9 @@ public final class ApiResponse {
         return matches(endpoint.schema(null));
     }
 
-    /** Схема варианта ответа, например doc_type для документов. */
-    public ApiResponse matchesSchema(String variant) {
-        return matches(endpoint.schema(variant));
+    /** Схема ответа prepare_doc / send_doc для документа docType. */
+    public ApiResponse matchesSchema(DocType docType) {
+        return matches(endpoint.schema(docType));
     }
 
     /** Поле ответа по GPath Rest Assured: "doc.amount", "accounts.account.code". */

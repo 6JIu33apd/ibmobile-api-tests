@@ -4,7 +4,8 @@ package ru.avangard.qa.ibmobile.config;
 public enum Profile {
 
     /** Рублёвые дебетовые (2) и кредитный, рублёвый и валютные текущие, депозитный счета. */
-    MAIN;
+    MAIN,
+    KILLER;
 
     /** null, если на контуре профиля нет. */
     public String login() {

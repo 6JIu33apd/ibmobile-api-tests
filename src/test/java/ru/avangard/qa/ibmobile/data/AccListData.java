@@ -4,6 +4,7 @@ import ru.avangard.qa.ibmobile.api.ApiResponse;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.api.Session;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ import static ru.avangard.qa.ibmobile.data.AccListData.AccountType.*;
 
 /**
  * Ответ acc_list целиком — данные для других ручек. Любое поле — {@link #path}, частые выборки — методами ниже.
- * Загружается один раз на класс: {@code accList = new AccListData(session())} в @BeforeAll.
+ * Берётся в тесте из его сессии: {@code new AccListData(session())} — у каждого пользователя свои данные.
  */
 public final class AccListData {
 
@@ -44,7 +45,8 @@ public final class AccListData {
     }
 
     /** От большей доступной суммы к меньшей: со счёта в начале списка есть что списать. */
-    private static final Comparator<Map<String, Object>> BY_OTB = Comparator.comparingDouble(a -> -((Number) a.get("otb")).doubleValue());
+    private static final Comparator<Map<String, Object>> BY_OTB =
+            Comparator.comparing((Map<String, Object> a) -> new BigDecimal(String.valueOf(a.get("otb")))).reversed();
 
     private final ApiResponse response;
 

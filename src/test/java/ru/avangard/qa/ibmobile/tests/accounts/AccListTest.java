@@ -6,7 +6,9 @@ import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import ru.avangard.qa.ibmobile.api.Request;
+import ru.avangard.qa.ibmobile.config.Profile;
 import ru.avangard.qa.ibmobile.core.BaseTest;
+import ru.avangard.qa.ibmobile.core.Login;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
@@ -21,6 +23,7 @@ class AccListTest extends BaseTest {
 
     @DisplayName("Счета клиента с уникальными 20-значными номерами")
     @Test
+    @Login(Profile.KILLER)
     void accList() {
         List<String> codes = Request.to(ACC_LIST).as(session()).post().success().matchesSchema().path("accounts.account.code");
         assertThat(codes).as("номера счетов").isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}"));

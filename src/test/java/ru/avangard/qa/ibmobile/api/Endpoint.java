@@ -34,9 +34,9 @@ public enum Endpoint {
         return path + "/" + version();
     }
 
-    /** schemas/&lt;ручка&gt;/[&lt;вариант&gt;/]&lt;версия&gt;.json */
-    String schema(String variant) {
-        return "schemas/" + name().toLowerCase() + "/" + (variant == null ? "" : variant + "/") + version() + ".json";
+    /** schemas/&lt;ручка&gt;/[&lt;doc_type&gt;/]&lt;версия&gt;.json */
+    String schema(DocType docType) {
+        return "schemas/" + name().toLowerCase() + "/" + (docType == null ? "" : docType + "/") + version() + ".json";
     }
 
     private String version() {

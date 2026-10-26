@@ -29,15 +29,16 @@ import static org.assertj.core.api.Assertions.fail;
 /**
  * Запрос к ручке, параметры — как в Postman. uid подставляется всегда, ticket — через {@link #as(Session)}.
  * Коллекция в значении — несколько одноимённых параметров. Тело — URLENC, у ручек с {@link Endpoint#multipart} — MULTIPART.
+ * Любая ручка бэка вызывается только так: {@code Request.to(endpoint)...post()}.
  */
 public final class Request {
 
     /** Рудимент протокола: бэк принимает любой. */
     private static final String UID = "594874414557102";
-    /** Соединение 10 с, ответ 60 с: зависший сервер роняет тест, а не держит прогон. */
+    /** Соединение 10 с, ответ 2 мин: зависший сервер роняет тест, а не держит прогон. */
     private static final RestAssuredConfig TIMEOUTS = RestAssuredConfig.config().httpClient(HttpClientConfig.httpClientConfig()
             .setParam("http.connection.timeout", 10_000)
-            .setParam("http.socket.timeout", 60_000));
+            .setParam("http.socket.timeout", 120_000));
 
     private final Endpoint endpoint;
     private final Map<String, Object> params = new LinkedHashMap<>();
@@ -57,28 +58,35 @@ public final class Request {
         return param("ticket", session.ticket);
     }
 
-    /** Значение — toString(): строка, число, ObjectNode (JSON); коллекция — одноимённые параметры (secure в send_doc). */
+    /**
+     * Значение — toString(): строка, число, ObjectNode (JSON); коллекция — одноимённые параметры (secure в send_doc).
+     * null убирает параметр: кейс «без параметра» — строка таблицы, как {@code Template.set} для полей документа.
+     */
     public Request param(String name, Object value) {
-        params.put(name, value);
+        if (value == null) {
+            params.remove(name);
+        } else {
+            params.put(name, value);
+        }
         return this;
     }
 
-    /** Файл из src/test/resources/files частью file. */
+    /** Файл из src/test/resources/files частью file (вложение документа, см. {@code Template.attachments}). */
     public Request file(String name) {
         files.add(new File("src/test/resources/files", name));
         return this;
     }
 
     public ApiResponse post() {
-        return send(Method.POST);
+        return execute(Method.POST);
     }
 
     /** Только логаут. */
     ApiResponse delete() {
-        return send(Method.DELETE);
+        return execute(Method.DELETE);
     }
 
-    private ApiResponse send(Method method) {
+    private ApiResponse execute(Method method) {
         String path = endpoint.path();
         return Allure.step(endpoint + ": " + method + " " + path, () -> {
             var spec = RestAssured.given().config(TIMEOUTS).baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());

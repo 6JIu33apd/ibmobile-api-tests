@@ -1,0 +1,16 @@
+package ru.avangard.qa.ibmobile.api;
+
+/**
+ * doc_type документов: значение — имя константы в нижнем регистре.
+ * По нему же ищутся шаблон templates/&lt;doc_type&gt;.json и схемы schemas/&lt;ручка&gt;/&lt;doc_type&gt;/.
+ */
+public enum DocType {
+
+    IB_OUR_ACC_TRANSFER,
+    IB_FREE_FORMAT_STATEMENT;
+
+    @Override
+    public String toString() {
+        return name().toLowerCase();
+    }
+}

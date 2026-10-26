@@ -6,7 +6,6 @@ import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import ru.avangard.qa.ibmobile.api.Request;
-import ru.avangard.qa.ibmobile.api.Session;
 import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.tests.Section;
 
@@ -15,9 +14,7 @@ import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
 import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.SESSION_EXPIRED;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.WRONG_CREDENTIALS;
-import static ru.avangard.qa.ibmobile.config.Profile.MAIN;
 
-/** Логин и логаут проверяются на своих сессиях, session() класса не используется. */
 @Epic(Section.AUTH)
 @Feature("Логин и логаут")
 class AuthTicketTest extends BaseTest {
@@ -25,19 +22,15 @@ class AuthTicketTest extends BaseTest {
     @DisplayName("Логин по логину и паролю выдаёт ticket и данные клиента")
     @Test
     void login() {
-        try (var s = Session.login(MAIN)) {
-            s.loginResponse.matchesSchema();
-            assertThat(s.ticket).isNotBlank();
-        }
+        session().loginResponse.matchesSchema();
+        assertThat(session().ticket).isNotBlank();
     }
 
     @DisplayName("После логаута ticket недействителен")
     @Test
     void logout() {
-        try (var s = Session.login(MAIN)) {
-            s.logout().matchesSchema();
-            Request.to(ACC_LIST).as(s).post().error(SESSION_EXPIRED);
-        }
+        session().logout().matchesSchema();
+        Request.to(ACC_LIST).as(session()).post().error(SESSION_EXPIRED);
     }
 
     /** Только несуществующий логин: неверный пароль реального профиля копит попытки до блокировки (5, без сброса). */

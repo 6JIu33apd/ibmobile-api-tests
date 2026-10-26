@@ -7,9 +7,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Нестандартный профиль для сессии {@link BaseTest} (по умолчанию — {@link Profile#MAIN}). */
+/** Профиль сессии теста, если не {@link Profile#MAIN}: {@code @Login(Profile.X)} на методе. */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
+@Target(ElementType.METHOD)
 public @interface Login {
     Profile value();
 }

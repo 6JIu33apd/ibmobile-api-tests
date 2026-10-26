@@ -22,12 +22,14 @@ public abstract class BaseTest {
 
     private Session session;
 
+    /** Срабатывает до @BeforeAll наследника, поэтому на prod класс не логинится вовсе. */
     @BeforeAll
     void prodGuard() {
         assumeTrue(!"prod".equals(Config.ENV) || Arrays.stream(getClass().getAnnotationsByType(Tag.class))
                 .anyMatch(tag -> "prod".equals(tag.value())), "На prod только классы с @Tag(\"prod\")");
     }
 
+    /** synchronized: кейсы класса идут параллельно, логин — один. */
     protected synchronized Session session() {
         if (session == null) {
             Login login = getClass().getAnnotation(Login.class);

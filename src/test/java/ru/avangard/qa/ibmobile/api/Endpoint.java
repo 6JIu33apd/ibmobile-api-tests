@@ -29,6 +29,7 @@ public enum Endpoint {
         this.multipart = multipart;
     }
 
+    /** Путь с версией релиза, например Auth/ticket/9.4. */
     String path() {
         return path + "/" + version();
     }

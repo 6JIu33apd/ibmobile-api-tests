@@ -32,6 +32,7 @@ public final class ApiResponse {
         this.response = response;
     }
 
+    /** Ответ без отказа: нет errorCode и resultCode не FAILED. */
     public ApiResponse success() {
         if (response.path("errorCode") != null || "FAILED".equals(response.path("resultCode"))) {
             fail("%s вернул отказ: %s", endpoint, response.asString());
@@ -39,6 +40,7 @@ public final class ApiResponse {
         return this;
     }
 
+    /** Техническая ошибка: код, описание и схема своего формата. */
     public ApiResponse error(ErrorCode expected) {
         assertThat(response.<Integer>path("errorCode")).as("errorCode: %s", response.asString()).isEqualTo(expected.code);
         assertThat(response.<String>path("errorDesc")).as("errorDesc").isEqualTo(expected.desc);
@@ -53,6 +55,7 @@ public final class ApiResponse {
         return matches("schemas/errors/check_failed.json");
     }
 
+    /** Строгая схема ручки по её версии в текущем релизе. */
     public ApiResponse matchesSchema() {
         return matches(endpoint.schema(null));
     }
@@ -62,6 +65,7 @@ public final class ApiResponse {
         return matches(endpoint.schema(variant));
     }
 
+    /** Поле ответа по GPath Rest Assured: "doc.amount", "accounts.account.code". */
     public <T> T path(String path) {
         return response.path(path);
     }
@@ -71,6 +75,7 @@ public final class ApiResponse {
         return new BigDecimal(response.path(path).toString());
     }
 
+    /** Нет схемы — ответ сохраняется образцом, тест падает: схему не пропустить. */
     private ApiResponse matches(String schema) {
         Allure.step("Схема " + schema, () -> {
             boolean exists = getClass().getClassLoader().getResource(schema) != null;

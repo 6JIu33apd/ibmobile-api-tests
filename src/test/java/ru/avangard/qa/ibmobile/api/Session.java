@@ -15,8 +15,10 @@ import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGOUT;
 public final class Session implements AutoCloseable {
 
     public final String login;
+    /** Нужен для подтверждения PWD. */
     public final String password;
     public final String ticket;
+    /** Для проверки схемы логина. */
     public final ApiResponse loginResponse;
     private boolean loggedOut;
 
@@ -45,6 +47,7 @@ public final class Session implements AutoCloseable {
         return Request.to(AUTH_LOGOUT).as(this).delete();
     }
 
+    /** Повторно не разлогинивает; ошибка логаута — вложение в Allure, а не падение теста. */
     @Override
     public void close() {
         if (loggedOut) {

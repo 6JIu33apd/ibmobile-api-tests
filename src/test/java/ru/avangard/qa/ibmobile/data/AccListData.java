@@ -1,16 +1,21 @@
 package ru.avangard.qa.ibmobile.data;
 
+import ru.avangard.qa.ibmobile.api.ApiResponse;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.api.Session;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
 import static ru.avangard.qa.ibmobile.data.AccListData.AccountType.*;
 
-/** Данные из acc_list для других ручек. */
+/**
+ * Ответ acc_list целиком — данные для других ручек. Любое поле — {@link #path}, частые выборки — методами ниже.
+ * Загружается один раз на класс: {@code accList = new AccListData(session())} в @BeforeAll.
+ */
 public final class AccListData {
 
     /**
@@ -38,17 +43,39 @@ public final class AccListData {
         }
     }
 
-    private AccListData() {
+    /** От большей доступной суммы к меньшей: со счёта в начале списка есть что списать. */
+    private static final Comparator<Map<String, Object>> BY_OTB = Comparator.comparingDouble(a -> -((Number) a.get("otb")).doubleValue());
+
+    private final ApiResponse response;
+
+    public AccListData(Session s) {
+        response = Request.to(ACC_LIST).as(s).post().success();
     }
 
-    /** Номера счетов типа type, от большей доступной суммы (otb) к меньшей. */
-    public static List<String> accounts(Session s, AccountType type) {
-        List<Map<String, Object>> accounts = Request.to(ACC_LIST).as(s).post().success().path("accounts.account");
-        return accounts.stream()
-                .filter(a -> typeOf(a) == type)
-                .sorted(Comparator.comparingDouble(a -> -((Number) a.get("otb")).doubleValue()))
-                .map(a -> (String) a.get("code"))
-                .toList();
+    /** Любое поле ответа, например path("accounts.account.code"). */
+    public <T> T path(String path) {
+        return response.path(path);
+    }
+
+    /** Номера счетов типа type. */
+    public List<String> accounts(AccountType type) {
+        return codes(a -> typeOf(a) == type);
+    }
+
+    /** Номера других счетов в валюте счёта account. */
+    public List<String> sameCurrency(String account) {
+        Object currency = account(account).get("currency");
+        return codes(a -> currency.equals(a.get("currency")) && !account.equals(a.get("code")));
+    }
+
+    private List<String> codes(Predicate<Map<String, Object>> filter) {
+        List<Map<String, Object>> accounts = path("accounts.account");
+        return accounts.stream().filter(filter).sorted(BY_OTB).map(a -> (String) a.get("code")).toList();
+    }
+
+    /** Пример выборки по GPath прямо из ответа. */
+    private Map<String, Object> account(String code) {
+        return path("accounts.account.find { it.code == '" + code + "' }");
     }
 
     /** null — счёт другого типа. */

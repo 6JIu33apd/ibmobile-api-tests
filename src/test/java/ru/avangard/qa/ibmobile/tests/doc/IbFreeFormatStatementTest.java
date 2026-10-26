@@ -6,7 +6,6 @@ import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,6 +18,7 @@ import ru.avangard.qa.ibmobile.core.Doc.Confirm;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,27 +50,21 @@ class IbFreeFormatStatementTest extends BaseTest {
         Doc.send(session(), prepared, Confirm.NONE).success().matchesSchema(DOC);
     }
 
-    @Story("Негативные")
-    @DisplayName("Заявление с пустым текстом отклоняется")
-    @Test
-    void emptyText() {
-        prepare(content("")).rejected("text", "Заполните текст заявления");
+    /** Поле заявления по умолчанию → значение (null — без поля), поле-виновник и сообщение отказа. */
+    static Stream<Arguments> refusals() {
+        return Stream.of(
+                arguments("пустой текст", "text", "", "text", "Заполните текст заявления"),
+                arguments("без текста", "text", null, "text", "Заполните текст"),
+                arguments("вложение без файла", "attachmentsList", List.of(Map.of("filename", "image.png", "contentType", "image/png")),
+                        "lobFile", "Ошибка обработки файла-вложения"));
     }
 
     @Story("Негативные")
-    @DisplayName("Заявление без текста отклоняется")
-    @Test
-    void withoutText() {
-        prepare(content(TEXT).without("text")).rejected("text", "Заполните текст");
-    }
-
-    @Story("Негативные")
-    @DisplayName("Заявление с неприложенным вложением отклоняется")
-    @Test
-    void missingAttachment() {
-        var content = content(TEXT);
-        content.putArray("attachmentsList").addObject().put("filename", "image.png").put("contentType", "image/png");
-        prepare(content).rejected("lobFile", "Ошибка обработки файла-вложения");
+    @DisplayName("Заявление отклоняется проверками")
+    @ParameterizedTest(name = "({0})")
+    @MethodSource("refusals")
+    void refusal(String title, String field, Object value, String badItem, String message) {
+        prepare(Doc.set(content(TEXT), field, value)).rejected(badItem, message);
     }
 
     private static ObjectNode content(String text) {

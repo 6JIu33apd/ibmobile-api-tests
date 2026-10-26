@@ -19,7 +19,7 @@ public class Threads implements ParallelExecutionConfigurationStrategy {
             public int getMaxPoolSize() { return n; }
             public int getCorePoolSize() { return n; }
             public int getKeepAliveSeconds() { return 30; }
-            public Predicate<? super ForkJoinPool> getSaturatePredicate() { return pool -> true; }
+            public Predicate<? super ForkJoinPool> getSaturatePredicate() { return pool -> true; } // не расти сверх n
         };
     }
 }

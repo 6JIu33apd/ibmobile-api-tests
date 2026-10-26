@@ -44,6 +44,16 @@ public final class Doc {
         }
     }
 
+    /** Кейс одной строкой параметров: поле field = value, null — без поля. Значение — строка, число, список, Map. */
+    public static ObjectNode set(ObjectNode content, String field, Object value) {
+        if (value == null) {
+            content.remove(field);
+        } else {
+            content.putPOJO(field, value);
+        }
+        return content;
+    }
+
     /** Файлы из src/test/resources/files прикладываются к запросу и перечисляются в attachmentsList документа. */
     public static ApiResponse prepare(Session s, String docType, ObjectNode content, String... files) {
         var request = Request.to(PREPARE_DOC).as(s).param("doc_type", docType);
@@ -57,12 +67,13 @@ public final class Doc {
         return request.param("doc_content", content).post();
     }
 
+    /** Подтверждение способом confirm (он должен быть в authMethods) и send_doc. Документ ждёт send_doc 5 минут. */
     public static ApiResponse send(Session s, ApiResponse prepared, Confirm confirm) {
         assertThat(prepared.<List<String>>path("authMethods")).as("способы подтверждения").contains(confirm.name());
         List<String> secure = switch (confirm) {
             case NONE -> List.of(secure("NONE", prepared.path("noneAuthInit.code")));
             case SMSPWD -> {
-                Request.to(SEND_CONFIRM_SMS).as(s).post().success();
+                Request.to(SEND_CONFIRM_SMS).as(s).post().success(); // без отправки код не принимается, а попытки ограничены
                 String code = Config.find("confirm.SMS"); // фиксированный на dev, иначе из БД
                 yield List.of(secure("SMS", code != null ? code : Db.smsCode(s.login)), secure("PWD", s.password));
             }
@@ -74,6 +85,7 @@ public final class Doc {
         return Request.to(SEND_DOC).as(s).param("secure", secure).post();
     }
 
+    /** Параметр secure — JSON-строка; SMSPWD — два параметра secure. */
     private static String secure(String method, String token) {
         return "{\"authMethod\":\"" + method + "\",\"authToken\":\"" + token + "\"}";
     }

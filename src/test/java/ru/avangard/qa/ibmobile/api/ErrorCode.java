@@ -24,6 +24,7 @@ public enum ErrorCode {
         this.schema = "schemas/errors/" + schema + ".json";
     }
 
+    /** Остальные коды Request считает ошибкой сервера. */
     static boolean allowed(int code) {
         return Arrays.stream(values()).anyMatch(e -> e.code == code);
     }

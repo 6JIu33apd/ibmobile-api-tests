@@ -21,7 +21,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public final class Config {
 
+    /** dev | test | prod. */
     public static final String ENV = System.getProperty("env", "dev");
+    /** Текущий релиз бэка; новый релиз — поменять здесь и добавить versions/&lt;релиз&gt;.properties. */
     public static final String RELEASE = System.getProperty("release", "3.20");
 
     private static final Properties PROPS = withSecrets(resource("env/" + ENV + ".properties"));
@@ -47,11 +49,13 @@ public final class Config {
         return Objects.requireNonNull(value(props, key), () -> "Не задан " + key + " (env=" + ENV + ", release=" + RELEASE + ")");
     }
 
+    /** Пустое значение = не задано: заготовки вида db.url= в test/prod. */
     private static String value(Properties props, String key) {
         String value = props.getProperty(key, "").trim();
         return value.isEmpty() ? null : value;
     }
 
+    /** Ключ dev.MAIN.login на dev становится MAIN.login; секреты других контуров не видны. */
     private static Properties withSecrets(Properties props) {
         Path path = Path.of(System.getProperty("user.home"), ".ibmobile", "secrets.properties");
         try {

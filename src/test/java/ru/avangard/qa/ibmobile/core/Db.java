@@ -11,6 +11,7 @@ public final class Db {
     private Db() {
     }
 
+    /** На test и prod код SMS хранится в БД открытым текстом. */
     public static String smsCode(String login) {
         return queryOne(Config.get("db.smsCodeSql"), login);
     }

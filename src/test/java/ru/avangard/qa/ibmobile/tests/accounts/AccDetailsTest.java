@@ -3,6 +3,7 @@ package ru.avangard.qa.ibmobile.tests.accounts;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,11 +24,18 @@ import static ru.avangard.qa.ibmobile.api.ErrorCode.INVALID_PARAMETERS;
 @Feature("Деталка счета")
 class AccDetailsTest extends BaseTest {
 
+    private AccListData accList;
+
+    @BeforeAll
+    void accList() {
+        accList = new AccListData(session());
+    }
+
     @DisplayName("Деталка счёта из списка счетов")
     @ParameterizedTest(name = "({0})")
     @EnumSource(AccountType.class)
     void details(AccountType type) {
-        var accounts = AccListData.accounts(session(), type);
+        var accounts = accList.accounts(type);
         assumeFalse(accounts.isEmpty(), "Нет счёта: " + type);
         String account = accounts.getFirst();
 
@@ -54,5 +62,6 @@ class AccDetailsTest extends BaseTest {
     @Test
     void withoutTicket() {
         Request.to(ACC_DETAILS).param("account", "40817810000000000001").post().error(AUTHORIZATION_REQUIRED);
+        // чужой валидный счёт с ticket даёт errorCode 2 internal_server_error — на разборе, кейса нет
     }
 }

@@ -4,6 +4,8 @@ import io.qameta.allure.Allure;
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
 import io.restassured.builder.MultiPartSpecBuilder;
+import io.restassured.config.HttpClientConfig;
+import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.restassured.http.Method;
 import io.restassured.response.Response;
@@ -32,6 +34,10 @@ public final class Request {
 
     /** Рудимент протокола: бэк принимает любой. */
     private static final String UID = "594874414557102";
+    /** Соединение 10 с, ответ 60 с: зависший сервер роняет тест, а не держит прогон. */
+    private static final RestAssuredConfig TIMEOUTS = RestAssuredConfig.config().httpClient(HttpClientConfig.httpClientConfig()
+            .setParam("http.connection.timeout", 10_000)
+            .setParam("http.socket.timeout", 60_000));
 
     private final Endpoint endpoint;
     private final Map<String, Object> params = new LinkedHashMap<>();
@@ -46,10 +52,12 @@ public final class Request {
         return new Request(endpoint);
     }
 
+    /** ticket — form-параметр, как и все остальные. */
     public Request as(Session session) {
         return param("ticket", session.ticket);
     }
 
+    /** Значение — toString(): строка, число, ObjectNode (JSON); коллекция — одноимённые параметры (secure в send_doc). */
     public Request param(String name, Object value) {
         params.put(name, value);
         return this;
@@ -65,6 +73,7 @@ public final class Request {
         return send(Method.POST);
     }
 
+    /** Только логаут. */
     ApiResponse delete() {
         return send(Method.DELETE);
     }
@@ -72,7 +81,7 @@ public final class Request {
     private ApiResponse send(Method method) {
         String path = endpoint.path();
         return Allure.step(endpoint + ": " + method + " " + path, () -> {
-            var spec = RestAssured.given().baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
+            var spec = RestAssured.given().config(TIMEOUTS).baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
             if (endpoint.multipart) {
                 multipart(spec);
             } else {
@@ -97,6 +106,7 @@ public final class Request {
                 .collect(Collectors.joining("&"));
     }
 
+    /** Текстовые части — явно text/plain UTF-8, иначе кириллица в doc_content ломается. */
     private void multipart(RequestSpecification spec) {
         params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
                 new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));

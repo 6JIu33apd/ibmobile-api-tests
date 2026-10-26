@@ -1,19 +1,27 @@
 package ru.avangard.qa.ibmobile.core;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import ru.avangard.qa.ibmobile.api.ApiResponse;
+import ru.avangard.qa.ibmobile.api.Request;
+import ru.avangard.qa.ibmobile.api.Session;
+import ru.avangard.qa.ibmobile.config.Config;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URLConnection;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static ru.avangard.qa.ibmobile.core.Endpoint.PREPARE_DOC;
-import static ru.avangard.qa.ibmobile.core.Endpoint.SEND_CONFIRM_SMS;
-import static ru.avangard.qa.ibmobile.core.Endpoint.SEND_DOC;
-import static ru.avangard.qa.ibmobile.core.Endpoint.SHOW_SCRETCH;
+import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
+import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_CONFIRM_SMS;
+import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_DOC;
+import static ru.avangard.qa.ibmobile.api.Endpoint.SHOW_SCRETCH;
 
 /**
  * Документ — всё, что меняет данные: prepare_doc(doc_type) → подтверждение способом из ответа → send_doc.
  * <pre>
- * var prepared = Doc.prepare(s, "ib_our_acc_transfer", content).success();
+ * var prepared = Doc.prepare(s, DOC, Doc.content(DOC).put("text", text), "image.png").success();
  * Doc.send(s, prepared, Confirm.NONE).success();
  * </pre>
  */
@@ -22,17 +30,29 @@ public final class Doc {
     /** Способы подтверждения из authMethods ответа prepare_doc (QR не автоматизируется). */
     public enum Confirm { NONE, SMSPWD, SCRETCH }
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private Doc() {
     }
 
-    /** Файлы из src/test/resources/files прикладываются частями file и перечисляются в attachmentsList документа. */
-    public static ApiResponse prepare(Session s, String docType, Template content, String... files) {
+    /** doc_content из templates/&lt;doc_type&gt;.json (копия из Postman), в тесте меняются только нужные поля. */
+    public static ObjectNode content(String docType) {
+        try (var in = Doc.class.getResourceAsStream("/templates/" + docType + ".json")) {
+            return (ObjectNode) MAPPER.readTree(in);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /** Файлы из src/test/resources/files прикладываются к запросу и перечисляются в attachmentsList документа. */
+    public static ApiResponse prepare(Session s, String docType, ObjectNode content, String... files) {
         var request = Request.to(PREPARE_DOC).as(s).param("doc_type", docType);
         if (files.length > 0) {
-            content.with("attachmentsList", Stream.of(files)
-                    .map(file -> Map.of("filename", file, "contentType", Request.contentType(file)))
-                    .toList());
-            Stream.of(files).forEach(request::file);
+            var attachments = content.putArray("attachmentsList");
+            for (String file : files) {
+                attachments.addObject().put("filename", file).put("contentType", URLConnection.guessContentTypeFromName(file));
+                request.file(file);
+            }
         }
         return request.param("doc_content", content).post();
     }

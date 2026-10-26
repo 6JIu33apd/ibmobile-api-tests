@@ -4,6 +4,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
+import ru.avangard.qa.ibmobile.api.Session;
+import ru.avangard.qa.ibmobile.config.Config;
+import ru.avangard.qa.ibmobile.config.Profile;
 
 import java.util.Arrays;
 

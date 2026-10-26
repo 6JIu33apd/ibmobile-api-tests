@@ -1,5 +1,7 @@
 package ru.avangard.qa.ibmobile.core;
 
+import ru.avangard.qa.ibmobile.config.Profile;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

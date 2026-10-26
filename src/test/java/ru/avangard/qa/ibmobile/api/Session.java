@@ -1,13 +1,15 @@
-package ru.avangard.qa.ibmobile.core;
+package ru.avangard.qa.ibmobile.api;
 
 import io.qameta.allure.Allure;
+import ru.avangard.qa.ibmobile.config.Config;
+import ru.avangard.qa.ibmobile.config.Profile;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static ru.avangard.qa.ibmobile.core.Endpoint.AUTH_LOGIN;
-import static ru.avangard.qa.ibmobile.core.Endpoint.AUTH_LOGOUT;
+import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
+import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGOUT;
 
 /**
- * Сессия. Обычно — одна на класс из {@link BaseTest}; своя ({@code try (var s = Session.login(...))}) нужна тестам,
+ * Сессия. Обычно — одна на класс из BaseTest; своя ({@code try (var s = Session.login(...))}) нужна тестам,
  * которые разлогинивают: логаут, смена логина/пароля. Логаут в close() не роняет тест.
  */
 public final class Session implements AutoCloseable {

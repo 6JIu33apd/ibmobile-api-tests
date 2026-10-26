@@ -1,5 +1,6 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
@@ -13,15 +14,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import ru.avangard.qa.ibmobile.core.ApiResponse;
+import ru.avangard.qa.ibmobile.api.ApiResponse;
+import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Doc;
 import ru.avangard.qa.ibmobile.core.Doc.Confirm;
-import ru.avangard.qa.ibmobile.core.Request;
-import ru.avangard.qa.ibmobile.core.Section;
-import ru.avangard.qa.ibmobile.core.Template;
-import ru.avangard.qa.ibmobile.data.Accounts;
-import ru.avangard.qa.ibmobile.data.Accounts.Kind;
+import ru.avangard.qa.ibmobile.data.AccListData;
+import ru.avangard.qa.ibmobile.data.AccListData.AccountType;
+import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.math.BigDecimal;
 import java.util.concurrent.ThreadLocalRandom;
@@ -31,9 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static ru.avangard.qa.ibmobile.core.Endpoint.PREPARE_DOC;
-import static ru.avangard.qa.ibmobile.core.ErrorCode.AUTHORIZATION_REQUIRED;
-import static ru.avangard.qa.ibmobile.core.ErrorCode.INVALID_PARAMETERS;
+import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.INVALID_PARAMETERS;
 
 @Epic(Section.PAYMENTS)
 @Feature("Перевод между своими счетами")
@@ -49,7 +49,7 @@ class IbOurAccTransferTest extends BaseTest {
 
     @BeforeAll
     void accounts() {
-        var debit = Accounts.of(session(), Kind.DEBIT);
+        var debit = AccListData.accounts(session(), AccountType.DEBIT);
         assumeTrue(debit.size() >= 2, "Нужны два рублёвых дебетовых счёта");
         from = debit.get(0);
         to = debit.get(1);
@@ -57,16 +57,16 @@ class IbOurAccTransferTest extends BaseTest {
 
     static Stream<Arguments> transfers() {
         return Stream.of(
-                arguments("с дебетового счёта, без подтверждения", Kind.DEBIT, Confirm.NONE),
-                arguments("с кредитного счёта, подтверждение SMS и паролем", Kind.CREDIT, Confirm.SMSPWD));
+                arguments("с дебетового счёта, без подтверждения", AccountType.DEBIT, Confirm.NONE),
+                arguments("с кредитного счёта, подтверждение SMS и паролем", AccountType.CREDIT, Confirm.SMSPWD));
     }
 
     @DisplayName("Перевод между своими счетами")
     @ParameterizedTest(name = "{0}")
     @MethodSource("transfers")
-    void transfer(String title, Kind kind, Confirm confirm) {
-        var accounts = Accounts.of(session(), kind);
-        assumeFalse(accounts.isEmpty(), "Нет счёта: " + kind);
+    void transfer(String title, AccountType type, Confirm confirm) {
+        var accounts = AccListData.accounts(session(), type);
+        assumeFalse(accounts.isEmpty(), "Нет счёта: " + type);
         var amount = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2); // та же сумма — дубль
 
         var prepared = prepare(content(accounts.getFirst(), to, amount)).success().matchesSchema(DOC);
@@ -118,11 +118,11 @@ class IbOurAccTransferTest extends BaseTest {
                 .post().error(AUTHORIZATION_REQUIRED);
     }
 
-    private static Template content(String accDeb, String accCred, BigDecimal amount) {
-        return Template.of(DOC).with("accDeb", accDeb).with("accCred", accCred).with("amount", amount);
+    private static ObjectNode content(String accDeb, String accCred, BigDecimal amount) {
+        return Doc.content(DOC).put("accDeb", accDeb).put("accCred", accCred).put("amount", amount);
     }
 
-    private ApiResponse prepare(Template content) {
+    private ApiResponse prepare(ObjectNode content) {
         return Doc.prepare(session(), DOC, content);
     }
 }

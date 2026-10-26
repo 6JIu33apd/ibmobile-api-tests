@@ -1,5 +1,6 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
@@ -11,15 +12,13 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import ru.avangard.qa.ibmobile.core.ApiResponse;
+import ru.avangard.qa.ibmobile.api.ApiResponse;
 import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Doc;
 import ru.avangard.qa.ibmobile.core.Doc.Confirm;
-import ru.avangard.qa.ibmobile.core.Section;
-import ru.avangard.qa.ibmobile.core.Template;
+import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,15 +68,16 @@ class IbFreeFormatStatementTest extends BaseTest {
     @DisplayName("Заявление с неприложенным вложением отклоняется")
     @Test
     void missingAttachment() {
-        var content = content(TEXT).with("attachmentsList", List.of(Map.of("filename", "image.png", "contentType", "image/png")));
+        var content = content(TEXT);
+        content.putArray("attachmentsList").addObject().put("filename", "image.png").put("contentType", "image/png");
         prepare(content).rejected("lobFile", "Ошибка обработки файла-вложения");
     }
 
-    private static Template content(String text) {
-        return Template.of(DOC).with("text", text);
+    private static ObjectNode content(String text) {
+        return Doc.content(DOC).put("text", text);
     }
 
-    private ApiResponse prepare(Template content, String... files) {
+    private ApiResponse prepare(ObjectNode content, String... files) {
         return Doc.prepare(session(), DOC, content, files);
     }
 }

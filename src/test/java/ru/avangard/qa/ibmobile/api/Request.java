@@ -1,4 +1,4 @@
-package ru.avangard.qa.ibmobile.core;
+package ru.avangard.qa.ibmobile.api;
 
 import io.qameta.allure.Allure;
 import io.qameta.allure.restassured.AllureRestAssured;
@@ -8,6 +8,7 @@ import io.restassured.http.ContentType;
 import io.restassured.http.Method;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
+import ru.avangard.qa.ibmobile.config.Config;
 
 import java.io.File;
 import java.net.URLConnection;
@@ -29,13 +30,16 @@ import static org.assertj.core.api.Assertions.fail;
  */
 public final class Request {
 
+    /** Рудимент протокола: бэк принимает любой. */
+    private static final String UID = "594874414557102";
+
     private final Endpoint endpoint;
     private final Map<String, Object> params = new LinkedHashMap<>();
     private final List<File> files = new ArrayList<>();
 
     private Request(Endpoint endpoint) {
         this.endpoint = endpoint;
-        params.put("uid", Config.get("uid"));
+        params.put("uid", UID);
     }
 
     public static Request to(Endpoint endpoint) {
@@ -51,14 +55,10 @@ public final class Request {
         return this;
     }
 
-    /** Файл из src/test/resources/files. */
-    Request file(String name) {
+    /** Файл из src/test/resources/files частью file. */
+    public Request file(String name) {
         files.add(new File("src/test/resources/files", name));
         return this;
-    }
-
-    static String contentType(String fileName) {
-        return URLConnection.guessContentTypeFromName(fileName);
     }
 
     public ApiResponse post() {
@@ -97,11 +97,10 @@ public final class Request {
                 .collect(Collectors.joining("&"));
     }
 
-    /** Параметры — текстовые части, файлы — части file. */
     private void multipart(RequestSpecification spec) {
         params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
                 new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
-        files.forEach(file -> spec.multiPart("file", file, contentType(file.getName())));
+        files.forEach(file -> spec.multiPart("file", file, URLConnection.guessContentTypeFromName(file.getName())));
     }
 
     private static List<String> values(Object value) {

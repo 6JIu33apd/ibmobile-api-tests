@@ -5,27 +5,39 @@
 ## Запуск
 
 ```
-mvnw test                        # dev, релиз из config.properties
+mvnw test                        # dev, текущий релиз
 mvnw test -Denv=test             # контур: dev | test | prod
 mvnw test -Drelease=3.19         # версии ручек из versions/3.19.properties
 mvnw test -Dtest=AccListTest     # один класс
 mvnw allure:serve                # отчёт
 ```
 
-На prod запускаются только классы с `@Tag("prod")`. Потоков — `threads` контура (на test и prod 1: одна сессия на логин).
+Контур и релиз по умолчанию — в начале `config/Config`. На prod запускаются только классы с `@Tag("prod")`.
+
+## Структура
+
+```
+config/   Config, Profile, Threads          откуда берутся настройки, логины, число потоков
+api/      Endpoint, Request, ApiResponse,   ручки, запрос, проверки ответа, допустимые ошибки,
+          ErrorCode, Session                 сессия (логин/логаут)
+core/     BaseTest, Login, Doc, Db           база тестов, документы, чтение БД
+data/     <Ручка>Data                        данные из ответов ручек для других тестов
+tests/    Section, <домен>/<Ручка>Test       тесты; Section — группы в Allure
+tools/    SchemaDraft                        черновики JSON-схем
+```
 
 ## Конфиг
 
-| Файл | Что |
+| Где | Что |
 |---|---|
-| `config.properties` | контур и релиз по умолчанию, общие параметры |
-| `env/<env>.properties` | baseUrl, коды подтверждения, БД |
+| `env/<env>.properties` | всё о контуре: baseUrl, потоки, коды подтверждения, БД |
 | `versions/<релиз>.properties` | версии ручек; новый релиз — копия файла с правкой изменившихся строк. Схема ищется по версии ручки: `-Drelease` переключает и пути, и схемы |
 | `~/.ibmobile/secrets.properties` | профили `<env>.<профиль>.login/.password` (нет профиля — класс пропускается), `<env>.db.user/.password` |
+| `junit-platform.properties` | параллельный запуск JUnit |
 
 ## Новая ручка
 
-1. Константа в `core/Endpoint` (`{v}` — версия, `true` — MULTIPART) и версия в `versions/*.properties`.
+1. Константа в `api/Endpoint` (путь без версии, `true` — MULTIPART) и версия в `versions/*.properties`.
 2. Класс `tests/<домен>/<Ручка>Test`, кейсы — параметры. Все классы наследуют `BaseTest`; `session()` — сессия на класс
    под профилем `MAIN`, логин при первом обращении. Другой профиль — `@Login(PROFILE)` на классе:
 
@@ -53,7 +65,8 @@ class AccListTest extends BaseTest {
    Имя кейса — что проверяется: `@DisplayName` на методе + `@ParameterizedTest(name = "...")` с изменяемой частью.
    Результаты прошлых прогонов очищаются перед каждым запуском.
 
-   Данные из других ручек — `data/`: например, `Accounts.of(session(), Kind.DEBIT)` — номера рублёвых дебетовых счетов из acc_list.
+   Данные из других ручек — `data/<Ручка>Data`: например, `AccListData.accounts(session(), AccountType.DEBIT)` —
+   номера рублёвых дебетовых счетов из acc_list.
 
 3. Схема: прогон без схемы падает и сохраняет ответ в `target/schema-samples` (`-Dsamples=true` — сохранять все ответы).
    `tools.SchemaDraft` делает черновик в `schemas/`: поле обязательно, если оно есть во всех образцах. Черновик проверить руками.
@@ -63,10 +76,11 @@ class AccListTest extends BaseTest {
 Всё, что меняет данные: `prepare_doc` с `doc_type` → подтверждение способом из ответа → `send_doc`.
 Способ подтверждения задаётся в кейсе заранее, `Doc.send` вызывает только его: `send_confirm_sms` для SMSPWD,
 `show_scretch` для SCRETCH. Безобидные документы — `Confirm.NONE`. Сами ручки подтверждения — в своих классах.
+`doc_content` — `Doc.content(DOC)` из `templates/<doc_type>.json`, в тесте меняются только нужные поля.
 Файлы из `files/` прикладываются аргументами `Doc.prepare` и сами попадают в `attachmentsList`.
 
 ```java
-var prepared = Doc.prepare(session(), DOC, Template.of(DOC).with("text", text), "image.png").success().matchesSchema(DOC);
+var prepared = Doc.prepare(session(), DOC, Doc.content(DOC).put("text", text), "image.png").success().matchesSchema(DOC);
 Doc.send(session(), prepared, Confirm.SMSPWD).success().matchesSchema(DOC);
 ```
 

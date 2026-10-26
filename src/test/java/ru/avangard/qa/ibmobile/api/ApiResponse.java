@@ -1,4 +1,4 @@
-package ru.avangard.qa.ibmobile.core;
+package ru.avangard.qa.ibmobile.api;
 
 import io.qameta.allure.Allure;
 import io.restassured.response.Response;

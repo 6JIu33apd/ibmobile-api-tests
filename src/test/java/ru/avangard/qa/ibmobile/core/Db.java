@@ -1,9 +1,11 @@
 package ru.avangard.qa.ibmobile.core;
 
+import ru.avangard.qa.ibmobile.config.Config;
+
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/** Чтение из Oracle контура: db.url, db.user, db.password. */
+/** Oracle контура: db.url, db.user, db.password. */
 public final class Db {
 
     private Db() {
@@ -14,7 +16,7 @@ public final class Db {
     }
 
     /** Первая колонка первой строки. */
-    public static String queryOne(String sql, Object... params) {
+    private static String queryOne(String sql, Object... params) {
         try (var connection = DriverManager.getConnection(Config.get("db.url"), Config.get("db.user"), Config.get("db.password"));
              var statement = connection.prepareStatement(sql)) {
             for (int i = 0; i < params.length; i++) {

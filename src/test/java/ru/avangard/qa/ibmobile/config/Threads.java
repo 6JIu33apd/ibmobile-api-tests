@@ -1,4 +1,4 @@
-package ru.avangard.qa.ibmobile.core;
+package ru.avangard.qa.ibmobile.config;
 
 import org.junit.platform.engine.ConfigurationParameters;
 import org.junit.platform.engine.support.hierarchical.ParallelExecutionConfiguration;

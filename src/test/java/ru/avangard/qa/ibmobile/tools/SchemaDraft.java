@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import ru.avangard.qa.ibmobile.core.ApiResponse;
+import ru.avangard.qa.ibmobile.api.ApiResponse;
 
 import java.io.IOException;
 import java.nio.file.Files;

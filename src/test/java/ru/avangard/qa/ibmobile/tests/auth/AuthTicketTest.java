@@ -5,17 +5,17 @@ import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import ru.avangard.qa.ibmobile.api.Request;
+import ru.avangard.qa.ibmobile.api.Session;
 import ru.avangard.qa.ibmobile.core.BaseTest;
-import ru.avangard.qa.ibmobile.core.Request;
-import ru.avangard.qa.ibmobile.core.Section;
-import ru.avangard.qa.ibmobile.core.Session;
+import ru.avangard.qa.ibmobile.tests.Section;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static ru.avangard.qa.ibmobile.core.Endpoint.ACC_LIST;
-import static ru.avangard.qa.ibmobile.core.Endpoint.AUTH_LOGIN;
-import static ru.avangard.qa.ibmobile.core.ErrorCode.SESSION_EXPIRED;
-import static ru.avangard.qa.ibmobile.core.ErrorCode.WRONG_CREDENTIALS;
-import static ru.avangard.qa.ibmobile.core.Profile.MAIN;
+import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
+import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.SESSION_EXPIRED;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.WRONG_CREDENTIALS;
+import static ru.avangard.qa.ibmobile.config.Profile.MAIN;
 
 /** Логин и логаут проверяются на своих сессиях, session() класса не используется. */
 @Epic(Section.AUTH)

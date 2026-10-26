@@ -1,4 +1,4 @@
-package ru.avangard.qa.ibmobile.core;
+package ru.avangard.qa.ibmobile.api;
 
 import java.util.Arrays;
 

@@ -1,4 +1,4 @@
-package ru.avangard.qa.ibmobile.core;
+package ru.avangard.qa.ibmobile.tests;
 
 /** Группы функций приложения — верхний уровень (@Epic) в Allure. */
 public final class Section {

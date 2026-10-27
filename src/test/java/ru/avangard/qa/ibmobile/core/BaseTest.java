@@ -2,18 +2,16 @@ package ru.avangard.qa.ibmobile.core;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import ru.avangard.qa.ibmobile.api.Session;
 import ru.avangard.qa.ibmobile.config.Config;
 import ru.avangard.qa.ibmobile.config.Profile;
 
-import java.util.Arrays;
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 
 /**
- * Базовый класс всех тестов. На prod тесты класса без @Tag("prod") пропускаются.
+ * Базовый класс всех тестов. Контур — dev, {@link OnTest} / {@link OnProd} на методе или классе — test / prod.
  * {@link #session()} — сессия теста под {@link Profile#MAIN} или профилем из {@link Login} на методе:
  * логин при первом обращении, логаут после теста. Тест без session() не логинится.
  */
@@ -23,10 +21,10 @@ public abstract class BaseTest {
     private Session session;
 
     @BeforeEach
-    void profile(TestInfo test) {
-        assumeTrue(!"prod".equals(Config.ENV) || Arrays.stream(getClass().getAnnotationsByType(Tag.class))
-                .anyMatch(tag -> "prod".equals(tag.value())), "На prod только классы с @Tag(\"prod\")");
-        Login login = test.getTestMethod().orElseThrow().getAnnotation(Login.class);
+    void setUp(TestInfo test) {
+        Method method = test.getTestMethod().orElseThrow();
+        Config.env(on(method, OnProd.class) ? "prod" : on(method, OnTest.class) ? "test" : "dev");
+        Login login = method.getAnnotation(Login.class);
         profile = login != null ? login.value() : Profile.MAIN;
     }
 
@@ -43,5 +41,9 @@ public abstract class BaseTest {
         if (session != null) {
             session.close();
         }
+    }
+
+    private boolean on(Method method, Class<? extends Annotation> env) {
+        return method.isAnnotationPresent(env) || getClass().isAnnotationPresent(env);
     }
 }

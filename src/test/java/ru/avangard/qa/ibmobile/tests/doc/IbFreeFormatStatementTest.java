@@ -11,10 +11,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import ru.avangard.qa.ibmobile.api.DocType;
 import ru.avangard.qa.ibmobile.api.Request;
-import ru.avangard.qa.ibmobile.config.Profile;
 import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Confirm;
-import ru.avangard.qa.ibmobile.core.Login;
 import ru.avangard.qa.ibmobile.core.Template;
 import ru.avangard.qa.ibmobile.tests.Section;
 
@@ -44,9 +42,8 @@ class IbFreeFormatStatementTest extends BaseTest {
     @DisplayName("Заявление в свободной форме")
     @ParameterizedTest(name = "{0}")
     @MethodSource("statements")
-    @Login(Profile.KILLER)
     void statement(String title, List<String> files) {
-        var prepared = Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, content(), files.toArray(String[]::new))
+        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content(), files.toArray(String[]::new))
                 .post().success().matchesSchema(DOC_TYPE);
         assertThat(prepared.<String>path("doc.text")).as("текст заявления").isEqualTo(TEXT);
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").isEqualTo(files);
@@ -68,7 +65,7 @@ class IbFreeFormatStatementTest extends BaseTest {
     @ParameterizedTest(name = "({0})")
     @MethodSource("rejections")
     void rejection(String title, String field, Object value, String badItem, String message) {
-        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content(), field, value))
+        Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(content(), field, value))
                 .post().rejected(badItem, message);
     }
 
@@ -76,7 +73,7 @@ class IbFreeFormatStatementTest extends BaseTest {
     @DisplayName("Подготовка без ticket отклоняется")
     @Test
     void withoutTicket() {
-        Request.to(PREPARE_DOC).attachment(DOC_TYPE, content()).post().error(AUTHORIZATION_REQUIRED);
+        Request.to(PREPARE_DOC).doc(DOC_TYPE, content()).post().error(AUTHORIZATION_REQUIRED);
     }
 
     /** Заявление по умолчанию: текст TEXT, без вложений. */

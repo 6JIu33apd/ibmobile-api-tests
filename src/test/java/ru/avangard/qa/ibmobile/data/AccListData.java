@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
 import static ru.avangard.qa.ibmobile.data.AccListData.AccountType.*;
 
@@ -62,6 +63,13 @@ public final class AccListData {
     /** Номера счетов типа type. */
     public List<String> accounts(AccountType type) {
         return codes(a -> typeOf(a) == type);
+    }
+
+    /** Первый счёт типа type; нет счёта — кейс пропускается. */
+    public String first(AccountType type) {
+        var accounts = accounts(type);
+        assumeFalse(accounts.isEmpty(), "Нет счёта: " + type);
+        return accounts.getFirst();
     }
 
     /** Номера других счетов в валюте счёта account. */

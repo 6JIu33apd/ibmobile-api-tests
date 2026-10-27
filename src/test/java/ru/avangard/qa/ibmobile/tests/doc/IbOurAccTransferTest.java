@@ -48,7 +48,7 @@ class IbOurAccTransferTest extends BaseTest {
     @MethodSource("transfers")
     void transfer(String title, AccountType from, Confirm confirm) {
         var amount = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2); // та же сумма — дубль
-        var prepared = Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, content(from, amount))
+        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content(from, amount))
                 .post().success().matchesSchema(DOC_TYPE);
         var sent = Request.to(SEND_DOC).as(session()).param("secure", confirm.secure(session(), prepared))
                 .post().success().matchesSchema(DOC_TYPE);
@@ -68,7 +68,7 @@ class IbOurAccTransferTest extends BaseTest {
     @ParameterizedTest(name = "({0})")
     @MethodSource("invalidParameters")
     void invalidParameters(String title, String field, Object value) {
-        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content(), field, value))
+        Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(content(), field, value))
                 .post().error(INVALID_PARAMETERS);
     }
 
@@ -84,7 +84,7 @@ class IbOurAccTransferTest extends BaseTest {
     @ParameterizedTest(name = "({0})")
     @MethodSource("rejections")
     void rejection(String title, String field, Object value, String badItem, String message) {
-        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content(), field, value))
+        Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(content(), field, value))
                 .post().rejected(badItem, message);
     }
 
@@ -94,7 +94,7 @@ class IbOurAccTransferTest extends BaseTest {
     @Test
     void sameAccount() {
         var content = content();
-        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content, "accCred", content.get("accDeb").asText()))
+        Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(content, "accCred", content.get("accDeb").asText()))
                 .post().rejected("accCred", "Счет зачисления должен отличаться от счета списания");
     }
 
@@ -102,7 +102,7 @@ class IbOurAccTransferTest extends BaseTest {
     @DisplayName("Подготовка без ticket отклоняется")
     @Test
     void withoutTicket() {
-        Request.to(PREPARE_DOC).attachment(DOC_TYPE, content()).post().error(AUTHORIZATION_REQUIRED);
+        Request.to(PREPARE_DOC).doc(DOC_TYPE, content()).post().error(AUTHORIZATION_REQUIRED);
     }
 
     /** Перевод по умолчанию: 1.00 с дебетового счёта. */
@@ -113,10 +113,9 @@ class IbOurAccTransferTest extends BaseTest {
     /** Перевод amount со счёта типа from на другой счёт той же валюты; нет такой пары — кейс пропускается. */
     private ObjectNode content(AccountType from, BigDecimal amount) {
         var accList = new AccListData(session());
-        var accounts = accList.accounts(from);
-        assumeFalse(accounts.isEmpty(), "Нет счёта: " + from);
-        var to = accList.sameCurrency(accounts.getFirst());
-        assumeFalse(to.isEmpty(), "Нет второго счёта в валюте счёта " + accounts.getFirst());
-        return Template.of(DOC_TYPE).put("accDeb", accounts.getFirst()).put("accCred", to.getFirst()).put("amount", amount);
+        var accDeb = accList.first(from);
+        var to = accList.sameCurrency(accDeb);
+        assumeFalse(to.isEmpty(), "Нет второго счёта в валюте счёта " + accDeb);
+        return Template.of(DOC_TYPE).put("accDeb", accDeb).put("accCred", to.getFirst()).put("amount", amount);
     }
 }

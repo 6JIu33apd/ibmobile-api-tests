@@ -2,6 +2,8 @@ package ru.avangard.qa.ibmobile.api;
 
 import ru.avangard.qa.ibmobile.config.Config;
 
+import java.util.Locale;
+
 /** Ручки бэка. Версия в конце пути — из versions/&lt;релиз&gt;.properties по имени константы. */
 public enum Endpoint {
 
@@ -36,7 +38,7 @@ public enum Endpoint {
 
     /** schemas/&lt;ручка&gt;/[&lt;doc_type&gt;/]&lt;версия&gt;.json */
     String schema(DocType docType) {
-        return "schemas/" + name().toLowerCase() + "/" + (docType == null ? "" : docType + "/") + version() + ".json";
+        return "schemas/" + name().toLowerCase(Locale.ROOT) + "/" + (docType == null ? "" : docType + "/") + version() + ".json";
     }
 
     private String version() {

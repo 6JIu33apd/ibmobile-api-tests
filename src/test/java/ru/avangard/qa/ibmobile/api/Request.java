@@ -6,14 +6,17 @@ import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
 import io.restassured.builder.MultiPartSpecBuilder;
 import io.restassured.config.HttpClientConfig;
+import io.restassured.config.JsonConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.restassured.http.Method;
+import io.restassured.path.json.config.JsonPathConfig.NumberReturnType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import ru.avangard.qa.ibmobile.config.Config;
 
-import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -21,6 +24,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -36,14 +40,19 @@ public final class Request {
 
     /** Рудимент протокола: бэк принимает любой. */
     private static final String UID = "594874414557102";
-    /** Соединение 10 с, ответ 2 мин: зависший сервер роняет тест, а не держит прогон. */
-    private static final RestAssuredConfig TIMEOUTS = RestAssuredConfig.config().httpClient(HttpClientConfig.httpClientConfig()
-            .setParam("http.connection.timeout", 10_000)
-            .setParam("http.socket.timeout", 120_000));
+    /**
+     * Соединение 10 с, ответ 2 мин: зависший сервер роняет тест, а не держит прогон.
+     * Дробные числа ответа — BigDecimal: по умолчанию Float, и 12345678.91 читается как 12345679.
+     */
+    private static final RestAssuredConfig CONFIG = RestAssuredConfig.config()
+            .httpClient(HttpClientConfig.httpClientConfig()
+                    .setParam("http.connection.timeout", 10_000)
+                    .setParam("http.socket.timeout", 120_000))
+            .jsonConfig(JsonConfig.jsonConfig().numberReturnType(NumberReturnType.BIG_DECIMAL));
 
     private final Endpoint endpoint;
     private final Map<String, Object> params = new LinkedHashMap<>();
-    private final List<File> files = new ArrayList<>();
+    private final List<String> files = new ArrayList<>();
 
     private Request(Endpoint endpoint) {
         this.endpoint = endpoint;
@@ -73,12 +82,12 @@ public final class Request {
     }
 
     /** Параметры prepare_doc: doc_type, doc_content; файлы из src/test/resources/files — части file и attachmentsList. */
-    public Request attachment(DocType docType, ObjectNode content, String... files) {
+    public Request doc(DocType docType, ObjectNode content, String... files) {
         if (files.length > 0) {
             var attachments = content.putArray("attachmentsList");
             for (String file : files) {
-                attachments.addObject().put("filename", file).put("contentType", URLConnection.guessContentTypeFromName(file));
-                this.files.add(new File("src/test/resources/files", file));
+                attachments.addObject().put("filename", file).put("contentType", contentType(file));
+                this.files.add(file);
             }
         }
         return param("doc_type", docType).param("doc_content", content);
@@ -96,7 +105,7 @@ public final class Request {
     private ApiResponse execute(Method method) {
         String path = endpoint.path();
         return Allure.step(endpoint + ": " + method + " " + path, () -> {
-            var spec = RestAssured.given().config(TIMEOUTS).baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
+            var spec = RestAssured.given().config(CONFIG).baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
             if (endpoint.multipart) {
                 multipart(spec);
             } else {
@@ -125,7 +134,20 @@ public final class Request {
     private void multipart(RequestSpecification spec) {
         params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
                 new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
-        files.forEach(file -> spec.multiPart("file", file, URLConnection.guessContentTypeFromName(file.getName())));
+        files.forEach(file -> spec.multiPart("file", file, bytes(file), contentType(file)));
+    }
+
+    private static byte[] bytes(String file) {
+        try (var in = Objects.requireNonNull(Request.class.getResourceAsStream("/files/" + file), "Нет files/" + file)) {
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /** Тип по расширению; неизвестный — ошибка, а не contentType: null в attachmentsList. */
+    private static String contentType(String file) {
+        return Objects.requireNonNull(URLConnection.guessContentTypeFromName(file), "Неизвестный тип файла " + file);
     }
 
     private static List<String> values(Object value) {

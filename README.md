@@ -26,34 +26,36 @@ dev.MAIN.password=...
 3. Запуск:
 
 ```
-mvnw test                        # dev, текущий релиз
-mvnw test -Denv=test             # контур: dev | test | prod
-mvnw test -Drelease=3.19         # версии ручек из versions/3.19.properties
+mvnw test                        # все тесты, каждый на своём контуре
 mvnw test -Dtest=AccListTest     # один класс
+mvnw test -DexcludedGroups=prod  # без тестов prod (-Dgroups=test — только test)
 mvnw allure:serve                # отчёт
 ```
 
-Из IDEA тесты запускаются как обычные JUnit-тесты; `-Denv` / `-Drelease` — в VM options.
+Из IDEA тесты запускаются как обычные JUnit-тесты.
 
 ## Контуры
 
-| Контур | Логины | Потоки |
-|---|---|---|
-| dev | тестовые, мультисессия | 2 |
-| test | только свой логин, одна сессия | 1 |
-| prod | только свой логин, одна сессия | 1 |
+Контур задаётся у теста, а не у прогона: по умолчанию dev, `@OnTest` / `@OnProd` на методе или классе — test / prod.
+Тест идёт туда, где стоит версия с нужной задачей.
 
-На prod запускаются только классы с `@Tag("prod")`, остальные пропускаются целиком (без логина).
+| Контур | Аннотация | Логины | Параллельно |
+|---|---|---|---|
+| dev | — | тестовые, мультисессия | 2 потока (`junit-platform.properties`) |
+| test | `@OnTest` | только свой логин, одна сессия | по одному (`@ResourceLock("test")`) |
+| prod | `@OnProd` | только свой логин, одна сессия | по одному (`@ResourceLock("prod")`) |
+
+`@OnTest` / `@OnProd` — ещё и теги `test` / `prod` для `-Dgroups` / `-DexcludedGroups`.
 
 ## Структура
 
 ```
 src/test/java/ru/avangard/qa/ibmobile/
-  config/   Config, Profile, Threads          откуда берутся настройки, логины, число потоков
+  config/   Config, Profile                   откуда берутся настройки контура, логины
   api/      Endpoint, DocType, Request,       ручки, типы документов, запрос, проверки ответа,
             ApiResponse, ErrorCode, Session    допустимые ошибки, сессия (логин/логаут)
-  core/     BaseTest, Login, Template,         база тестов, тело и подтверждение документов, чтение БД
-            Confirm, Db
+  core/     BaseTest, Login, OnTest, OnProd,   база тестов, профиль и контур теста,
+            Template, Confirm, Db              тело и подтверждение документов, чтение БД
   data/     <Ручка>Data                        ответы ручек как данные для других тестов
   tests/    Section, <домен>/<Ручка>Test       тесты; Section — группы в Allure
   tools/    SchemaDraft                        черновики JSON-схем из реальных ответов
@@ -73,12 +75,11 @@ src/test/resources/
 
 | Где | Что |
 |---|---|
-| `config/Config` | контур и релиз по умолчанию (`dev`, `3.20`) |
-| `env/<env>.properties` | всё о контуре: baseUrl, потоки, коды подтверждения (dev), БД (test/prod) |
+| `env/<env>.properties` | всё о контуре: baseUrl, релиз, коды подтверждения (dev), БД (test/prod) |
 | `versions/<релиз>.properties` | версии ручек релиза |
 | `~/.ibmobile/secrets.properties` | логины, пароли профилей и БД; ключи `<env>.*` |
 
-Секреты текущего контура накладываются поверх `env/<env>.properties` без префикса: `dev.MAIN.login` → `MAIN.login`.
+Секреты контура теста накладываются поверх `env/<env>.properties` без префикса: `dev.MAIN.login` → `MAIN.login`.
 Пустое значение (`db.url=`) считается незаданным: обращение к нему роняет тест с понятным сообщением.
 
 `uid` в каждом запросе — рудимент протокола, бэк принимает любой; это константа в `Request`.
@@ -87,9 +88,10 @@ src/test/resources/
 ### Релизы и версии
 
 Пути ручек версионированы: `Auth/ticket/9.4`, `Doc/prepare_doc/8.1`. В `Endpoint` путь без версии,
-версия берётся из `versions/<релиз>.properties` по имени константы. Схема ищется по той же версии:
-`schemas/acc_list/4.0.json`. Поэтому `-Drelease` переключает и пути, и схемы — старый сервер гоняется
-теми же тестами. Новый релиз — копия файла версий с правкой изменившихся строк и новые схемы для них.
+версия берётся из `versions/<release>.properties` по имени константы, `release` — из `env/<env>.properties`
+контура теста. Схема ищется по той же версии: `schemas/acc_list/4.0.json`. Поэтому `release` переключает и пути,
+и схемы — у каждого контура свой релиз. Новый релиз — копия файла версий с правкой изменившихся строк, новые схемы
+для них и `release=` в файле контура.
 
 ## Запрос и ответ
 
@@ -107,6 +109,7 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 - Тело — URLENC; у ручек, помеченных в `Endpoint` как multipart (`prepare_doc` и немногие другие), — MULTIPART.
 - Коллекция в `param` — несколько одноимённых параметров (например, два `secure` в `send_doc`).
 - Каждый запрос — шаг Allure с телом запроса и ответа.
+- Дробные числа ответа — `BigDecimal` (Rest Assured по умолчанию читает их как `Float` с потерей точности).
 
 ### Ошибки
 
@@ -135,7 +138,8 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 - `tools.SchemaDraft` (запуск из IDEA) строит черновик в `src/test/resources/schemas`:
   поле обязательное, если оно есть во всех образцах. Существующие схемы не перезаписываются — для пересоздания удалить файл.
   Черновик проверить руками.
-- Схемы ошибок в `schemas/errors/` написаны руками.
+- Схемы ошибок в `schemas/errors/` написаны руками. Общие части — `$ref` на них (путь относительно схемы):
+  `"$ref": "../../errors/check_failed.json#/properties/checkResult/items"`.
 
 ## Сессии и профили
 
@@ -215,7 +219,8 @@ void rejection(String title, String field, Object value, String badItem, String 
 
 Кейс со сложной логикой (несколько полей, свои проверки) — отдельный метод.
 
-Вложения — файлы из `files/` последними аргументами `doc`: они уходят частями `file` и сами попадают в `attachmentsList`:
+Вложения — файлы из `files/` последними аргументами `doc`: они уходят частями `file` и сами попадают в `attachmentsList`
+(тип — по расширению; неизвестное расширение роняет тест):
 
 ```java
 Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content(), "image.png").post().success();
@@ -232,6 +237,7 @@ Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content(), "image.png").post
 ```java
 var accList = new AccListData(session());
 accList.accounts(AccountType.DEBIT);         // номера рублёвых дебетовых счетов
+accList.first(AccountType.DEBIT);            // первый из них; нет счёта — кейс пропускается
 accList.sameCurrency(account);               // другие счета в валюте account
 accList.path("accounts.account.currency");   // любое поле — по пути
 ```
@@ -273,7 +279,7 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 4. Негативные кейсы — обязательно, `@Story("Негативные")`: бизнес-отказы `rejected(...)`, технические `error(...)`.
 5. Документы — константа в `api/DocType`, шаблон `templates/<doc_type>.json`, в классе `DOC_TYPE`.
 6. Прогнать: без схемы тест упадёт и сохранит ответ → `tools.SchemaDraft` → проверить схему → прогнать снова.
-7. Для prod — `@Tag("prod")` и только то, что безопасно под своим логином.
+7. Не dev — `@OnTest` / `@OnProd`; на prod только то, что безопасно под своим логином.
 
 ```java
 @Epic(Section.ACCOUNTS)
@@ -298,6 +304,7 @@ class AccListTest extends BaseTest {
 
 ## Параллельность
 
-JUnit гоняет классы и кейсы параллельно, число потоков — `threads` контура (`config/Threads`).
+JUnit гоняет классы и кейсы параллельно в 2 потока (`junit-platform.properties`); тесты test и prod —
+по одному на контур (`@ResourceLock` в `@OnTest` / `@OnProd`), параллельно с dev. Контур — на поток теста.
 У каждого теста свой экземпляр класса и своя сессия, поэтому документы тоже идут параллельно:
 подготовленный документ живёт в сессии своего теста.

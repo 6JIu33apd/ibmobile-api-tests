@@ -11,7 +11,7 @@ import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGOUT;
 /**
  * Сессия теста (BaseTest): логин профиля и логаут. Логаут в close() не роняет тест.
  */
-public final class Session implements AutoCloseable {
+public final class Session {
 
     public final String login;
     /** Нужен для подтверждения PWD. */
@@ -31,7 +31,7 @@ public final class Session implements AutoCloseable {
     /** Нет профиля на контуре — тест пропускается. */
     public static Session login(Profile profile) {
         String login = profile.login();
-        assumeTrue(login != null, "Нет профиля " + profile + " на контуре " + Config.ENV);
+        assumeTrue(login != null, "Нет профиля " + profile + " на контуре " + Config.env());
         String password = profile.password();
         return new Session(login, password, Request.to(AUTH_LOGIN).param("login", login).param("password", password).post().success());
     }
@@ -42,14 +42,13 @@ public final class Session implements AutoCloseable {
     }
 
     /** Повторно не разлогинивает; ошибка логаута — вложение в Allure, а не падение теста. */
-    @Override
     public void close() {
         if (loggedOut) {
             return;
         }
         try {
             logout();
-        } catch (Throwable e) {
+        } catch (Exception | AssertionError e) {
             Allure.addAttachment("Логаут не удался", e.toString());
         }
     }

@@ -1,5 +1,7 @@
 package ru.avangard.qa.ibmobile.core;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import ru.avangard.qa.ibmobile.api.ApiResponse;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.api.Session;
@@ -25,7 +27,7 @@ public enum Confirm {
      * Значения параметра secure для send_doc. SMSPWD и SCRETCH сначала запрашивают код (send_confirm_sms, show_scretch):
      * без этого код не принимается, а попытки ограничены. Документ ждёт send_doc 5 минут.
      */
-    public List<String> secure(Session s, ApiResponse prepared) {
+    public List<ObjectNode> secure(Session s, ApiResponse prepared) {
         assertThat(prepared.<List<String>>path("authMethods")).as("способы подтверждения").contains(name());
         return switch (this) {
             case NONE -> List.of(token("NONE", prepared.path("noneAuthInit.code")));
@@ -41,8 +43,8 @@ public enum Confirm {
         };
     }
 
-    /** secure — JSON-строка; SMSPWD — два параметра secure. */
-    private static String token(String method, String token) {
-        return "{\"authMethod\":\"" + method + "\",\"authToken\":\"" + token + "\"}";
+    /** secure — JSON-строка (Jackson экранирует " и \ в пароле); SMSPWD — два параметра secure. */
+    private static ObjectNode token(String method, String token) {
+        return JsonNodeFactory.instance.objectNode().put("authMethod", method).put("authToken", token);
     }
 }

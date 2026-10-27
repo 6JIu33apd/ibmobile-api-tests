@@ -1,5 +1,7 @@
 package ru.avangard.qa.ibmobile.api;
 
+import java.util.Locale;
+
 /**
  * doc_type документов: значение — имя константы в нижнем регистре.
  * По нему же ищутся шаблон templates/&lt;doc_type&gt;.json и схемы schemas/&lt;ручка&gt;/&lt;doc_type&gt;/.
@@ -11,6 +13,6 @@ public enum DocType {
 
     @Override
     public String toString() {
-        return name().toLowerCase();
+        return name().toLowerCase(Locale.ROOT);
     }
 }

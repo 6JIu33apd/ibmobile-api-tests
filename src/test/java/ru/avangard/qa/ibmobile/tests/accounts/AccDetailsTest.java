@@ -18,7 +18,6 @@ import ru.avangard.qa.ibmobile.tests.Section;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_DETAILS;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
@@ -61,10 +60,7 @@ class AccDetailsTest extends BaseTest {
         Request.to(ACC_DETAILS).param("account", account(AccountType.DEBIT)).post().error(AUTHORIZATION_REQUIRED);
     }
 
-    /** Первый счёт типа type; нет счёта — кейс пропускается. */
     private String account(AccountType type) {
-        var accounts = new AccListData(session()).accounts(type);
-        assumeFalse(accounts.isEmpty(), "Нет счёта: " + type);
-        return accounts.getFirst();
+        return new AccListData(session()).first(type);
     }
 }

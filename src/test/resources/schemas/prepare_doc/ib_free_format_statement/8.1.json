@@ -75,7 +75,10 @@
       }
     },
     "checkResult" : {
-      "type" : "array"
+      "type" : "array",
+      "items" : {
+        "$ref" : "../../errors/check_failed.json#/properties/checkResult/items"
+      }
     },
     "checkSuccess" : {
       "type" : "boolean"

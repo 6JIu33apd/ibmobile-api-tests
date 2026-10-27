@@ -1,8 +1,7 @@
 # CLAUDE.md
 
-Полный контекст проекта для Claude Code: правила работы с пользователем, знание о бэке, устройство кода,
-подводные камни окружения и история решений. Запуск и примеры для людей — в README.md.
-Здесь записано **актуальное** состояние; решения, которые поменялись, в истории отмечены «было → стало».
+Контекст проекта для Claude Code: правила работы, знание о бэке, неочевидное в коде, подводные камни и решения,
+к которым не возвращаться. Устройство фреймворка, запуск и примеры — в README.md (читать при работе с кодом).
 
 ## Проект
 
@@ -23,13 +22,16 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   без пользы) — сказать прямо, почему, и сделать лучшее; он это принимает.
 - **Код похож на соседний:** код и имена — на английском; комментарии, Allure, имена кейсов, README, CLAUDE.md
   и ответы пользователю — на русском. Комментарии короткие заметки по делу, только где неочевидно.
-- **Не запускать ничего на prod.** Тесты гонять только на dev (`-Denv=dev`, по умолчанию).
+- **Не запускать ничего на test и prod.** Тесты с `@OnTest` / `@OnProd` гоняет только пользователь; самому запускать
+  с `-DexcludedGroups=test,prod` (без аннотации тест идёт на dev).
+- **После изменений показывать, на сколько строк стало больше или меньше** (всего и по коду/ресурсам/докам).
 - **Коммит и пуш — только по команде «коммить и пуш».** Ветка `main`, сообщение на английском, в конце
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Перед коммитом — проверка на секреты:
   `git grep -nE "password=[^.<]|<реальный логин>"` (ожидаемые совпадения — только примеры команд в CLAUDE.md).
   Реальные логины профилей в репозиторий не писать (ни в код, ни в CLAUDE.md).
-- **Правки пользователя не трогать.** Он сам меняет код (например, `Profile.KILLER` и `@Login(Profile.KILLER)` в
-  `AccListTest` и `IbFreeFormatStatementTest` — без них тест под KILLER не залогинится). Если что-то мешает — сказать.
+- **Правки пользователя не трогать** и не пересказывать их в каждом ответе: проверять и говорить, только если что-то
+  не так (например, после снятия `@Login` остались неиспользуемые импорты — убрать и коротко сказать).
+- **Изменяемые параметры — не в Java**, а в ресурсах/`-D`: перезапуск без правки кода, переезд в переменные CI.
 - **Отчитываться честно:** сколько тестов прошло/упало/пропущено и почему; сбой стенда отличать от бага кода
   (перезапуск класса). Не коммитил — так и написать.
 - Секреты — только в `~/.ibmobile/secrets.properties`, вне репозитория. **Ничего не маскировать** (ни в Allure, ни в логах).
@@ -65,7 +67,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   `clientInfo.sessionTimeout=1800`). OTP при логине нет.
 - Ticket передаётся form-параметром `ticket` в каждом запросе. Живёт от 15 минут до 3 часов.
 - Логаут: `DELETE Auth/ticket/9.0` с ticket в теле → `{"responseCode":0}`; после него ticket → errorCode 5.
-- Мультисессия — только на dev (тестовые логины). На test и prod — одна сессия на логин, поэтому там 1 поток.
+- Мультисессия — только на dev (тестовые логины). На test и prod — одна сессия на логин, поэтому их тесты идут по одному.
 - Вход по номеру карты и кодовому слову возвращает логин и пароль (сложный кейс, пока не делаем).
 
 ### Ошибки
@@ -125,7 +127,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   похоже на дефект, пользователь разбирается сам, кейса нет.
 - `prepare_doc` без `doc_type` → HTTP 500.
 - dev иногда не отвечает: acc_details висел 300 с, prepare_doc с вложением — дольше 60 с; перезапуск проходит.
-  **acc_list под профилем KILLER не отвечает и за 2 мин** → `AccListTest.accList` падает по тайм-ауту (разбирается).
+  **acc_list под профилем KILLER не отвечает и за 2 мин** (разбирается; тесты под KILLER пользователь снял).
 
 ### Контуры и профили
 
@@ -133,132 +135,67 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   БД не нужна. test: клон прода, только логин пользователя. prod: боевой, только логин пользователя; мутирующие тесты
   на prod пользователь разрешает под своим логином (операции, невозможные на dev), запускает их только он.
 - БД: Oracle, свой JDBC URL на контур; на test/prod есть доступ на чтение (код SMS). `db.url` и SQL кода SMS
-  (`db.smsCodeSql`) на test/prod заполнит пользователь.
+  (`db.smsCodeSql`) на test/prod заполнит пользователь. Дальше данные из БД будут браться хранимыми процедурами:
+  селекты упакует в пакет процедур пользователь, тесты только вызывают нужную (`Db` — под это, не упрощать).
 - Профили (`config/Profile`): `MAIN` — по умолчанию; на dev у него два рублёвых дебетовых, кредитный, рублёвый и
   валютные текущие, депозитный (валютных дебетовых и кредитных нет — эти кейсы пропускаются). `KILLER` — добавил
   пользователь. Логины/пароли — `<env>.<ПРОФИЛЬ>.login/.password` в секретах; нет профиля на контуре — тест пропускается.
 
-## Устройство кода
+## Неочевидное в коде
 
-Пакеты (`src/test/java/ru/avangard/qa/ibmobile`), зависимости в одну сторону:
-`config` ← `api` ← `core` ← `data` ← `tests`; `tools` отдельно.
+Пакеты `config` ← `api` ← `core` ← `data` ← `tests`, `tools` отдельно (подробно — README).
 
-| Пакет | Классы |
-|---|---|
-| `config` | `Config` (ENV/RELEASE из `-Denv`/`-Drelease`, умолчания `dev`/`3.20`; `get` — обязательный, `find` — null если пусто, `version(name)`), `Profile` (`login()` / `password()`), `Threads` (потоки JUnit = `threads` контура) |
-| `api` | `Endpoint` (путь без версии, название для Allure, флаг multipart; `path()` = путь + версия; `schema(docType)`), `DocType` (enum doc_type, значение — имя в нижнем регистре), `Request`, `ApiResponse`, `ErrorCode`, `Session` |
-| `core` | `BaseTest`, `Login` (аннотация профиля на методе), `Template` (`of(docType)`, `set(content, field, value)`), `Confirm` (enum NONE/SMSPWD/SCRETCH, `secure(session, prepared)`), `Db` (`smsCode(login)`) |
-| `data` | `<Ручка>Data`: `AccListData` — весь ответ acc_list, `path(...)`, `accounts(AccountType)`, `sameCurrency(account)`; выборки от большего `otb` (BigDecimal); `AccountType` DEBIT/DEBIT_FX/CREDIT/CREDIT_FX/CURRENT/CURRENT_FX/DEPOSIT с русскими названиями |
-| `tests` | `Section` (группы Allure), `<домен>/<Ручка>Test` |
-| `tools` | `SchemaDraft` — черновики схем из `target/schema-samples` (запуск из IDEA, существующие не перезаписывает) |
-
-### Request и ApiResponse
-
-- **Любая ручка вызывается только через `Request.to(endpoint)...post()`** (DELETE — только логаут, package-private).
-  Отправляет только `Request` (внутренний `execute`): Allure-шаг «<название>: METHOD путь», тайм-ауты 10 с / 2 мин,
-  проверка HTTP 200 и допустимого errorCode.
-- `as(session)` — ticket; без `as` — кейс «без ticket». `param(name, value)`: значение — toString (ObjectNode → JSON),
-  коллекция — одноимённые параметры, `null` — убрать параметр. `doc(docType, content, files...)` — doc_type,
-  doc_content, файлы из `src/test/resources/files` частями `file` + автозаполнение `attachmentsList`.
-- URLENC-тело собирается вручную (allure-rest-assured падает с ClassCastException на одноимённых form-параметрах).
-  Multipart: текстовые части явно `text/plain; UTF-8`, иначе ломается кириллица.
-- `ApiResponse`: `success()` (нет errorCode и resultCode не FAILED), `error(ErrorCode)` (код + desc + схема формата),
-  `rejected(badItem, message)` (кортеж в checkResult + `check_failed.json`), `matchesSchema()` /
-  `matchesSchema(DocType)` (`schemas/<ручка>/[<doc_type>/]<версия>.json`), `path(gpath)`, `decimal(path)` (BigDecimal).
-  Нет схемы → ответ сохраняется в `target/schema-samples`, тест падает «запусти tools.SchemaDraft»;
-  `-Dsamples=true` — сохранять все ответы.
-
-### Сессии
-
-- Одна сессия — на тест. `BaseTest.session()` логинится лениво при первом обращении, `@AfterEach` — логаут
-  (`Session.close()` не роняет тест, повторно не разлогинивает). Тест без `session()` не логинится.
-  Профиль — `MAIN`, другой — `@Login(Profile.X)` на методе. Экземпляр класса — на тест (JUnit по умолчанию).
-- Prod-guard в `BaseTest` (`@BeforeEach`): на prod тесты класса без `@Tag("prod")` пропускаются до логина.
-- `Session`: поля `login`, `password` (для PWD), `ticket`, `loginResponse` (схема логина); `login(Profile)`, `logout()`.
-
-### Тестовый класс
-
-- Одна ручка — один класс `tests/<домен>/<Ручка>Test extends BaseTest`, `@Epic(Section.X)`, `@Feature("…")`.
-  Документ — свой класс на doc_type: `Ib<DocType>Test`, константа `private static final DocType DOC_TYPE`.
-- Порядок: позитивные кейсы → таблица `invalidParameters` (`@MethodSource`, строки «название, поле/параметр,
-  значение») → `error(INVALID_PARAMETERS)` → таблица `rejections` → `rejected(badItem, message)` → особые кейсы
-  отдельными методами (например, `sameAccount` — значение зависит от сессии, а таблицы статические) →
-  `withoutTicket` (тот же запрос без `.as`) → внизу приватные **данные** по умолчанию (`account(type)`, `content()`).
-  Обёрток над запросом в тестах нет: кейс = `Request.to(...)` + `.as(session())` + изменение (`.param` /
-  `Template.set`) + `.post()` + проверки.
-- Имена: `@DisplayName` метода + `@ParameterizedTest(name = "{0}")` для позитивных сценариев («Перевод между своими
-  счетами с дебетового счёта, …») и `"({0})"` для уточнений («Перевод отклоняется проверками (больше остатка)»).
-  Негативные — `@Story("Негативные")`. В Allure имя кейса = DisplayName + name.
-- Каждый класс имеет негативные кейсы. Документы идут параллельно (SAME_THREAD не нужен).
-
-### Ресурсы
-
-- `env/<env>.properties`: `baseUrl`, `threads` (dev 2, test/prod 1), `confirm.SMS`/`confirm.SCRETCH` (dev),
-  `db.url`/`db.smsCodeSql` (test/prod, пока пустые). Пустое значение = не задано.
-- `versions/3.20.properties`: AUTH_LOGIN=9.4, AUTH_LOGOUT=9.0, SEND_CONFIRM_SMS=1.0, SHOW_SCRETCH=1.0,
-  ACC_LIST=4.0, ACC_DETAILS=5.0, PREPARE_DOC=8.1, SEND_DOC=1.0. Новый релиз — копия файла с правкой, `-Drelease`
-  переключает и пути, и схемы.
-- `schemas/`: auth_login/9.4, auth_logout/9.0, acc_list/4.0, acc_details/5.0, prepare_doc/<doc_type>/8.1,
-  send_doc/<doc_type>/1.0 (оба документа), errors/{error, error_result, check_failed}. Строгие draft-04,
-  `additionalProperties: false`, обязательные в `required` (пустой `required` draft-04 не допускает).
-- `templates/<doc_type>.json` (копии из Postman), `files/image.png` (69 байт), `junit-platform.properties`
-  (параллельно, стратегия `config.Threads`).
+- **Контур — у теста:** dev по умолчанию, `@OnTest` / `@OnProd` (метод или класс) — test / prod. `BaseTest` ставит
+  `Config.env` (ThreadLocal: тест целиком в одном потоке). В аннотациях мета-`@ResourceLock("<env>")` — тесты test и
+  prod идут по одному (одна сессия на логин), и `@Tag("<env>")`. Проверено без сети. `release` — в `env/<env>.properties`.
+- **Любая ручка — только `Request.to(endpoint)...post()`** (DELETE — только логаут). `execute` — шаг Allure,
+  тайм-ауты 10 с / 2 мин, HTTP 200 и допустимый errorCode. URLENC-тело собирается вручную (allure-rest-assured падает
+  с ClassCastException на одноимённых form-параметрах). Multipart-тексты явно `text/plain; UTF-8` (иначе кириллица).
+- Дробные числа ответа — `BigDecimal` (`NumberReturnType.BIG_DECIMAL`): по умолчанию Rest Assured даёт `Float`,
+  `12345678.91` → `12345679` (проверено); целые остаются `Integer`.
+- `Request.doc(docType, content, files...)` — вложения из classpath `files/`; тип по расширению, неизвестный роняет тест.
+- `Confirm.secure` собирает JSON через Jackson (экранирует пароль). `Session.close()` не роняет тест.
+- Схемы: draft-04, строгие; пустой `required` draft-04 не допускает. Массив без `items` ничего не проверяет
+  (`SchemaDraft` не выводит структуру пустых массивов): `checkResult` в схемах документов —
+  `$ref` на `../../errors/check_failed.json#/properties/checkResult/items` (резолвится из classpath, проверено);
+  `auth_login` `accounts` и `lastUnreadNewsList` — `maxItems: 0`, пока нет образца с элементами.
+- Потоки: `fixed` 2 в `junit-platform.properties`. pom: версии плагинов закреплены; Allure-результаты чистятся на
+  `initialize` (иначе копятся между прогонами).
 - `~/.ibmobile/secrets.properties`: `dev.MAIN.*`, `dev.KILLER.*`; заготовки `test.*`, `prod.*` закомментированы.
-- pom: Allure-результаты чистятся на `initialize` (иначе копятся между прогонами); `allure.results.directory` в surefire.
+- `Section` пополняется по мере появления классов — неиспользуемые группы не удалять.
 
 ### Последний прогон на dev
 
-30 тестов: `AccDetailsTest` 10 (2 пропуска: нет валютных дебетовых/кредитных), `AccListTest` 2 (1 падает — KILLER,
-тайм-аут), `AuthTicketTest` 3, `IbFreeFormatStatementTest` 6, `IbOurAccTransferTest` 9.
+30 тестов, все прошли: `AccDetailsTest` 10 (2 пропуска: нет валютных дебетовых/кредитных), `AccListTest` 2,
+`AuthTicketTest` 3, `IbFreeFormatStatementTest` 6, `IbOurAccTransferTest` 9.
 
 ## Окружение и подводные камни
 
-- Запуск: `./mvnw -q test -Denv=dev [-Dtest=Класс|'Ib*Test']`; итоги — `target/surefire-reports/TEST-*.xml`
-  (атрибуты `tests/errors/skipped/failures`); отчёт — `mvnw allure:serve`. Полный прогон ~2–4 мин (дольше при KILLER).
-- Правка файлов скриптом Python: читать/писать `encoding='utf-8'`, писать `newline='\n'`; проверять `assert count==1`.
-  Инструмент Write требует предварительного Read файла. Уведомления «file changed on disk» после коммита обычно —
-  нормализация CRLF (`autocrlf=true`), не правки пользователя; проверять `git status`/`git diff`.
+- Запуск: `./mvnw -q test -DexcludedGroups=test,prod [-Dtest=Класс|'Ib*Test']`; итоги — `target/surefire-reports/TEST-*.xml`
+  (атрибуты `tests/errors/skipped/failures`); отчёт — `mvnw allure:serve`. Полный прогон ~2–4 мин.
+  `NoHttpResponse` / тайм-аут на dev — сбой стенда, перезапустить класс.
+- `java` из PATH падает (access violation) — запускать `$JAVA_HOME/bin/java`; `jshell` в Git Bash падает.
+  Classpath: `mvnw dependency:build-classpath -Dmdep.outputFile=...`.
+- Правка файлов скриптом Python: `encoding='utf-8'`, `newline='
+'`, `assert count==1`. Write/Edit требуют Read файла.
+  JSON-схемы править текстом, не `json.dumps` (формат Jackson `"key" : value` и инлайн-массивы — иначе огромный диф).
+  «file changed on disk» после коммита обычно — нормализация CRLF (`autocrlf=true`); проверять `git status`/`git diff`.
 - Вывод кириллицы из Python в консоль — кракозябры (cp1251); `awk length` считает байты, а не символы.
 - Секреты в выводе маскировать при просмотре (`sed 's/password=.*/password=***/'`).
 
-## История решений
+## Решения (не возвращаться)
 
-1. **Каркас.** Стек, один класс на ручку, строгие схемы, секреты в `~/.ibmobile`, версии ручек на релиз в `versions/`,
-   профили логинов, 2 потока на dev, 1 на test/prod.
-2. **Документы.** Удалён придуманный `multipartSince` → флаг multipart у ручки. Один бизнес-сценарий — один способ
-   подтверждения, заданный в кейсе (не e2e; ручки подтверждения — свои классы позже).
-3. **Сессии (первый подход).** Было: логин вручную в теле каждого теста (пользователь возмутился) → одна сессия на класс,
-   профиль `MAIN` по умолчанию, `@Login` для нестандартного. Позже заменено, см. п. 10.
-4. **Отчёт.** Allure-результаты чистятся перед прогоном (было 68 «кейсов» из старых результатов); осмысленные имена;
-   негативные — `@Story`. Было: уровни меню «Сервисы»/«Ещё» → стало: верхний уровень — группы функций (`Section`).
-5. **Негативы.** Было: общий `CommonAuthTest` → стало: негативы внутри каждого класса. ProdGuard из META-INF → в `BaseTest`.
-6. **Ошибки.** Эталон бизнес-ошибки — `checkResult` с `badItem`; допустимые errorCode 1, 4, 5, 1000; остальное роняет
-   тест. Убраны проверки остатков и тест `conv_rates`.
-7. **Счета.** Терминология и флаги acc_list.
-8. **Структура (2026-10-26).** `core` разделён на `config`/`api`/`core`. Было: `config.properties` (uid, env, release,
-   threads) → стало: всё о контуре в `env/<env>.properties`, умолчания в `Config`, uid — константа в `Request`.
-   Было: `data.Accounts` с `Kind` → стало: `AccListData` с `AccountType`; классы данных — `<Ручка>Data`.
-9. **Данные и кейсы (2026-10-27).** `AccListData` хранит весь ответ. Перевод — два счёта одной валюты.
-   Негативы — таблицы `@MethodSource` поверх валидного тела по умолчанию. Тайм-ауты запроса.
-10. **Сессия на тест (2026-10-27).** Было: сессия на класс → стало: ленивая сессия на тест, `@Login` на методе
-    (одна ручка разным пользователям отдаёт разные данные). Данные других ручек берутся в тесте. Из README убраны
-    бизнес-пояснения.
-11. **Единый дизайн классов.** Ручки и документы устроены одинаково (см. «Тестовый класс»); `refusal(s)` переименованы
-    в `rejection(s)`; `Request.param(name, null)` убирает параметр.
-12. **Документы.** Было: `Doc` → `PrepareDoc`/`SendDoc` → стало (п. 13): только `Request.to`. `doc` в именах —
-    `docType`, когда речь о типе документа.
-13. **Любая ручка — через `Request.to()`.** Обёртки `PrepareDoc`/`SendDoc` и `request(...)` в тестах удалены;
-    остались `Template` и `Confirm.secure`. Удалён неиспользуемый `Session.login(login, password)`.
-14. **DocType.** enum вместо строк; аннотация на класс не нужна (тип всё равно идёт в param, схему, шаблон).
-15. **Документы параллельно.** `@Execution(SAME_THREAD)` убран (нужен был при общей сессии на класс): проверено
-    3 прогонами в 2 потока на dev. Убран неиспользуемый `@Tag("mutating")`. Lombok не добавляем: ~20 строк экономии
-    не стоят зависимости, annotation processor под Java 25 и плагина IDE.
-16. **`Request.doc`.** `doc(docType, content, files...)` — вызов prepare_doc в одну строку; удалены
-    `Template.attachments` и публичный `Request.file`. Тайм-аут ответа поднят до 2 мин (KILLER).
-
-Коммиты: b70ff0c init → 3f121a6 каркас → 64dea5b сессия на класс → 42d420c счета, заявление, ошибки → ba535a7 профиль
-по умолчанию → 7bd25ae пакеты → 6e62d02 одна валюта, таблицы → a4ebe00 сессия на тест, Request.to, DocType →
-0b114bc параллельные документы, Request.doc.
+- Сессия — на тест, ленивая, профиль `@Login` на методе (было: на класс; логин в теле теста — пользователь против).
+- Контур — у теста (`@OnTest` / `@OnProd`); было: `-Denv`/`-Drelease` на прогон, prod-guard по `@Tag("prod")`, `config.Threads`.
+- Никаких обёрток над запросом (`PrepareDoc`/`SendDoc`, `request(...)` в тестах — удалены): только `Request.to`,
+  `Template`, `Confirm.secure`. `DocType` — enum, на класс не вешается.
+- Негативы — в каждом классе (было: общий `CommonAuthTest`); таблицы `@MethodSource` поверх валидного запроса.
+- Allure: верхний уровень — группы функций `Section` (было: «Сервисы»/«Ещё»); негативные — `@Story`.
+- Документы идут параллельно, `@Execution(SAME_THREAD)` не нужен (проверено 3 прогонами).
+- Не делаем: Lombok (зависимость и annotation processor не стоят ~20 строк), автоперезапуск упавших (скроет
+  зависания dev и повторит мутирующие документы), смену json-schema-validator (draft-04 хватает), общие `$ref` для
+  блоков ответа prepare_doc (каждую схему от `SchemaDraft` пришлось бы править руками), проверки остатков, `conv_rates`.
+- Удалено придуманное: `multipartSince` (→ флаг multipart у ручки), `@Tag("mutating")`.
 
 ## Открыто
 
@@ -269,6 +206,6 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 - Классы для ручек подтверждения (`send_confirm_sms`, `show_scretch`).
 - Конвертация (перевод между счетами разных валют); остальные ~30 типов документов в `DocType`.
 - `acc_details` с чужим счётом → errorCode 2.
-- `db.url` и SQL для кода SMS на test/prod — заполнит пользователь.
+- `db.url`, SQL кода SMS и пакет процедур на test/prod — заполнит пользователь.
 - `@Story("Негативные")` можно заменить своей мета-аннотацией — не проверено, поддерживает ли Allure.
-- GitLab CI (секреты — в переменных CI) и связь с KiwiTCMS — позже.
+- GitLab CI (секреты — в переменных CI; там `-DexcludedGroups=prod`) и связь с KiwiTCMS — позже.

@@ -57,7 +57,8 @@ src/test/java/ru/avangard/qa/ibmobile/
   api/      Endpoint, DocType, Request,       ручки, типы документов, запрос, проверки ответа,
             ApiResponse, ErrorCode, Session    допустимые ошибки, сессия (логин/логаут)
   core/     BaseTest, Login, OnTest, OnProd,   база тестов, профиль и контур теста, негативные кейсы,
-            Negative, Template, AuthMethod, Db тело и подтверждение документов, чтение БД
+            Negative, DocContent, AuthMethod,  тело и подтверждение документов, чтение БД
+            Db
   data/     <Ручка>Data                        ответы ручек как данные для других тестов
   tests/    Section, <домен>/<Ручка>Test       тесты; Section — группы в Allure
   tools/    SchemaDraft                        черновики JSON-схем из реальных ответов
@@ -66,7 +67,7 @@ src/test/resources/
   versions/<релиз>.properties                  версии ручек релиза
   schemas/<ручка>/[<doc_type>/]<версия>.json   схемы ответов
   schemas/errors/                              схемы ошибок
-  templates/<doc_type>.json                    шаблоны doc_content
+  doc_content/<doc_type>.json                  шаблоны doc_content
   files/                                       файлы-вложения
   junit-platform.properties                    параллельный запуск JUnit
 ```
@@ -156,7 +157,7 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 @DisplayName("Деталка счёта с блокировкой")
 @Test
 void blocked() {
-    Request.to(ACC_DETAILS).as(session()).param("account", account(AccountType.DEBIT)).post().success().matchesSchema();
+    Request.to(ACC_DETAILS).as(session()).param("account", account(DEBIT)).post().success().matchesSchema();
 }
 ```
 
@@ -170,7 +171,7 @@ void blocked() {
 prepare_doc и send_doc — обычные ручки, вызываются как все: `Request.to(PREPARE_DOC)`, `Request.to(SEND_DOC)`.
 Тип документа — константа enum `api/DocType`; в тестовом классе — `private static final DocType DOC_TYPE = DocType.X`.
 Значение `doc_type` — имя константы в нижнем регистре; по нему же ищутся шаблон и схемы документа.
-Помогают два класса: `Template` — тело `doc_content`, `AuthMethod` — параметр `secure` для send_doc.
+Помогают два класса: `DocContent` — тело `doc_content`, `AuthMethod` — параметр `secure` для send_doc.
 
 ```java
 var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent()).post().success().matchesSchema(DOC_TYPE);
@@ -190,17 +191,19 @@ Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.NONE.secure(sessio
 
 ### doc_content и параметризация кейсов
 
-`Template.of(DOC_TYPE)` — шаблон тела из `templates/<doc_type>.json` (копия из Postman) как Jackson `ObjectNode`.
+`DocContent.of(DOC_TYPE)` — шаблон тела из `doc_content/<doc_type>.json` (копия из Postman) как Jackson `ObjectNode`.
 В тестовом классе есть валидный вариант по умолчанию, кейс меняет в нём поля. JSON на каждый кейс не нужен.
 
 ```java
 private static ObjectNode docContent() {
-    return Template.of(DOC_TYPE).put("text", TEXT);
+    return DocContent.of(DOC_TYPE).put("text", TEXT);
 }
 ```
 
 Кейсы, которые меняют одно поле, — строки таблицы `@MethodSource`: `argumentSet(имя кейса, аргументы...)`.
-`Template.set(docContent, поле, значение)` меняет поле, `null` — убирает его; значение — строка, число, список или Map:
+`DocContent.set(docContent, путь, значение)` меняет поле, `null` — убирает его; значение — строка, число, список или Map.
+Путь — через точку на любую глубину, индекс массива — число: `"amount"`, `"payer.address.city"`, `"attachmentsList.0.filename"`.
+Родитель поля должен быть в шаблоне: опечатка в пути роняет тест.
 
 ```java
 static Stream<Arguments> rejections() {
@@ -213,7 +216,7 @@ static Stream<Arguments> rejections() {
 @ParameterizedTest(name = "({argumentSetName})")
 @MethodSource("rejections")
 void rejection(String field, Object value, String badItem, String errorMessage) {
-    Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(docContent(), field, value))
+    Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), field, value))
             .post().rejected(badItem, errorMessage);
 }
 ```
@@ -237,14 +240,15 @@ Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(), "image.png").p
 
 ```java
 var accList = new AccListData(session());
-accList.accounts(AccountType.DEBIT);         // номера рублёвых дебетовых счетов
-accList.first(AccountType.DEBIT);            // первый из них; нет счёта — кейс пропускается
-accList.sameCurrency(account);               // другие счета в валюте account
-accList.path("accounts.account.currency");   // любое поле — по пути
+accList.codes("it.cardAcc && !it.isCredit && it.currency == 'RUR'");  // номера счетов по условию
+accList.field(account, "currency");                                 // поле счёта по номеру
+accList.path("accounts.account.code");                              // любое поле ответа — по пути
 ```
 
-Нужен новый срез — путь прямо в тесте; повторяется в нескольких тестах — метод в классе `Data`.
-`AccountType` — типы счетов по флагам acc_list (`_FX` — валютный); выборки — от большего `otb` к меньшему.
+Какой счёт, карта или валюта нужны, решает тест: условие — GPath (Groovy) по полям счёта из ответа,
+в таблице кейсов — строкой. `codes` сортирует от большего `otb` к меньшему (со счёта в начале есть что списать),
+нет подходящих — кейс пропускается, поле условия, которого нет у счетов (опечатка), роняет тест.
+В классе `Data` — только то, что нужно многим тестам; не модель предметной области.
 
 ## Отчёт Allure
 
@@ -257,7 +261,7 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 ## Тестовый класс
 
 Все классы устроены одинаково — информационная ручка или документ. Каждый кейс читается одинаково:
-`Request.to(...)` с данными по умолчанию, `.as(session())`, изменение кейса (`.param(...)` или `Template.set(...)`),
+`Request.to(...)` с данными по умолчанию, `.as(session())`, изменение кейса (`.param(...)` или `DocContent.set(...)`),
 `.post()`, проверки. В классе — только данные по умолчанию, обёрток над запросом нет.
 
 | Порядок | Что | Ручка (`AccDetailsTest`) | Документ (`IbOurAccTransferTest`) |
@@ -270,7 +274,7 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 | 6 | данные по умолчанию — приватные методы внизу внешнего класса | `account(type)` | `docContent()` |
 
 Кейс таблицы меняет одно значение в валидном запросе, `null` — убирает его:
-у ручки — `.param(name, value)`, у документа — `Template.set(docContent, field, value)`.
+у ручки — `.param(name, value)`, у документа — `DocContent.set(docContent, field, value)`.
 Имена — как у бэка: `docType`, `docContent`, `authMethod`, `accDeb`, `badItem`, `errorMessage`; без сокращений.
 
 ## Новая ручка
@@ -280,7 +284,7 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 3. Позитивные кейсы: `success()`, `matchesSchema()`, проверка ключевых значений.
 4. Негативные кейсы — обязательно, во вложенном `@Nested @Negative class Negatives`: бизнес-отказы `rejected(...)`,
    технические `error(...)`. Аннотация даёт Story «Негативные» всем его тестам.
-5. Документы — константа в `api/DocType`, шаблон `templates/<doc_type>.json`, в классе `DOC_TYPE`
+5. Документы — константа в `api/DocType`, шаблон `doc_content/<doc_type>.json`, в классе `DOC_TYPE`
    и `@ResourceLock("prepared_doc")` на классе.
 6. Прогнать: без схемы тест упадёт и сохранит ответ → `tools.SchemaDraft` → проверить схему → прогнать снова.
 7. Не dev — `@OnTest` / `@OnProd`; на prod только то, что безопасно под своим логином.
@@ -312,7 +316,11 @@ class AccListTest extends BaseTest {
 
 ## Параллельность
 
-JUnit гоняет классы и кейсы параллельно в 2 потока (`junit-platform.properties`); тесты test и prod —
-по одному на контур (`@ResourceLock` в `@OnTest` / `@OnProd`), параллельно с dev. Контур — на поток теста.
-У каждого теста свой экземпляр класса и своя сессия. Документы — исключение: подготовленный документ бэк хранит
-общим для всех ticket логина, поэтому классы документов идут по одному (`@ResourceLock("prepared_doc")`).
+Классы (ручки) идут параллельно в 2 потока, кейсы одного класса, включая `Negatives`, — по очереди
+(`junit-platform.properties`). Тесты test и prod — по одному на контур (`@ResourceLock` в `@OnTest` / `@OnProd`),
+параллельно с dev. Контур — на поток теста. У каждого теста свой экземпляр класса и своя сессия.
+Классы документов — ещё и по одному между собой (`@ResourceLock("prepared_doc")`): все они вызывают prepare_doc,
+а подготовленный документ бэк хранит общим для всех ticket логина.
+
+Тест, который меняет настройку клиента (например, лимит по счёту), возвращает её назад, даже если упал:
+иначе пропадёт образец для следующих прогонов.

@@ -14,10 +14,9 @@ import ru.avangard.qa.ibmobile.api.DocType;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.core.AuthMethod;
 import ru.avangard.qa.ibmobile.core.BaseTest;
+import ru.avangard.qa.ibmobile.core.DocContent;
 import ru.avangard.qa.ibmobile.core.Negative;
-import ru.avangard.qa.ibmobile.core.Template;
 import ru.avangard.qa.ibmobile.data.AccListData;
-import ru.avangard.qa.ibmobile.data.AccListData.AccountType;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.math.BigDecimal;
@@ -25,7 +24,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
 import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_DOC;
@@ -42,19 +40,22 @@ import static ru.avangard.qa.ibmobile.api.ErrorCode.INVALID_PARAMETERS;
 class IbOurAccTransferTest extends BaseTest {
 
     private static final DocType DOC_TYPE = DocType.IB_OUR_ACC_TRANSFER;
+    /** Счета списания — условия по полям acc_list. */
+    private static final String DEBIT = "it.cardAcc && !it.isCredit && it.currency == 'RUR'";
+    private static final String CREDIT = "it.isCredit && it.currency == 'RUR'";
 
     static Stream<Arguments> transfers() {
         return Stream.of(
-                argumentSet("с дебетового счёта, без подтверждения", AccountType.DEBIT, AuthMethod.NONE),
-                argumentSet("с кредитного счёта, подтверждение SMS и паролем", AccountType.CREDIT, AuthMethod.SMSPWD));
+                argumentSet("с рублёвого дебетового счёта, без подтверждения", DEBIT, AuthMethod.NONE),
+                argumentSet("с рублёвого кредитного счёта, подтверждение SMS и паролем", CREDIT, AuthMethod.SMSPWD));
     }
 
     @DisplayName("Перевод между своими счетами")
     @ParameterizedTest(name = "{argumentSetName}")
     @MethodSource("transfers")
-    void transfer(AccountType accDebType, AuthMethod authMethod) {
+    void transfer(String accDebCondition, AuthMethod authMethod) {
         var amount = randomAmount();
-        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(accDebType, amount))
+        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(accDebCondition, amount))
                 .post().success().matchesSchema(DOC_TYPE);
         var sent = Request.to(SEND_DOC).as(session()).param("secure", authMethod.secure(session(), prepared))
                 .post().success().matchesSchema(DOC_TYPE);
@@ -77,7 +78,7 @@ class IbOurAccTransferTest extends BaseTest {
         @ParameterizedTest(name = "({argumentSetName})")
         @MethodSource("invalidParameters")
         void invalidParameters(String field, Object value) {
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(docContent(), field, value))
+            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), field, value))
                     .post().error(INVALID_PARAMETERS);
         }
 
@@ -93,7 +94,7 @@ class IbOurAccTransferTest extends BaseTest {
         @ParameterizedTest(name = "({argumentSetName})")
         @MethodSource("rejections")
         void rejection(String field, Object value, String badItem, String errorMessage) {
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(docContent(), field, value))
+            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), field, value))
                     .post().rejected(badItem, errorMessage);
         }
 
@@ -102,7 +103,7 @@ class IbOurAccTransferTest extends BaseTest {
         @Test
         void sameAccount() {
             var docContent = docContent();
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(docContent, "accCred", docContent.get("accDeb").asText()))
+            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent, "accCred", docContent.get("accDeb").asText()))
                     .post().rejected("accCred", "Счет зачисления должен отличаться от счета списания");
         }
 
@@ -122,7 +123,7 @@ class IbOurAccTransferTest extends BaseTest {
         @DisplayName("Повторная отправка документа отклоняется")
         @Test
         void sentTwice() {
-            var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(AccountType.DEBIT, randomAmount())).post().success();
+            var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(DEBIT, randomAmount())).post().success();
             var secure = AuthMethod.NONE.secure(session(), prepared);
             Request.to(SEND_DOC).as(session()).param("secure", secure).post().success();
             Request.to(SEND_DOC).as(session()).param("secure", secure).post().error(INVALID_PARAMETERS);
@@ -134,17 +135,16 @@ class IbOurAccTransferTest extends BaseTest {
         return BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2);
     }
 
-    /** Перевод по умолчанию: 1.00 с дебетового счёта. */
+    /** Перевод по умолчанию: 1.00 с рублёвого дебетового счёта. */
     private ObjectNode docContent() {
-        return docContent(AccountType.DEBIT, BigDecimal.ONE);
+        return docContent(DEBIT, BigDecimal.ONE);
     }
 
-    /** Перевод amount со счёта типа accDebType на другой счёт той же валюты; нет такой пары — кейс пропускается. */
-    private ObjectNode docContent(AccountType accDebType, BigDecimal amount) {
+    /** Перевод amount со счёта по условию accDebCondition на другой счёт той же валюты; нет такой пары — кейс пропускается. */
+    private ObjectNode docContent(String accDebCondition, BigDecimal amount) {
         var accList = new AccListData(session());
-        var accDeb = accList.first(accDebType);
-        var accCreds = accList.sameCurrency(accDeb);
-        assumeFalse(accCreds.isEmpty(), "Нет второго счёта в валюте счёта " + accDeb);
-        return Template.of(DOC_TYPE).put("accDeb", accDeb).put("accCred", accCreds.getFirst()).put("amount", amount);
+        var accDeb = accList.codes(accDebCondition).getFirst();
+        var accCred = accList.codes("it.currency == '" + accList.field(accDeb, "currency") + "' && it.code != '" + accDeb + "'").getFirst();
+        return DocContent.of(DOC_TYPE).put("accDeb", accDeb).put("accCred", accCred).put("amount", amount);
     }
 }

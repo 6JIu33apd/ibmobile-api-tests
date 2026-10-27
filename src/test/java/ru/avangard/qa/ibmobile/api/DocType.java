@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /**
  * doc_type документов: значение — имя константы в нижнем регистре.
- * По нему же ищутся шаблон templates/&lt;doc_type&gt;.json и схемы schemas/&lt;ручка&gt;/&lt;doc_type&gt;/.
+ * По нему же ищутся шаблон doc_content/&lt;doc_type&gt;.json и схемы schemas/&lt;ручка&gt;/&lt;doc_type&gt;/.
  */
 public enum DocType {
 

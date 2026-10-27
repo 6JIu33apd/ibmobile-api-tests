@@ -14,8 +14,8 @@ import ru.avangard.qa.ibmobile.api.DocType;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.core.AuthMethod;
 import ru.avangard.qa.ibmobile.core.BaseTest;
+import ru.avangard.qa.ibmobile.core.DocContent;
 import ru.avangard.qa.ibmobile.core.Negative;
-import ru.avangard.qa.ibmobile.core.Template;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
@@ -72,7 +72,7 @@ class IbFreeFormatStatementTest extends BaseTest {
         @ParameterizedTest(name = "({argumentSetName})")
         @MethodSource("rejections")
         void rejection(String field, Object value, String badItem, String errorMessage) {
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(docContent(), field, value))
+            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), field, value))
                     .post().rejected(badItem, errorMessage);
         }
 
@@ -85,6 +85,6 @@ class IbFreeFormatStatementTest extends BaseTest {
 
     /** Заявление по умолчанию: текст TEXT, без вложений. */
     private static ObjectNode docContent() {
-        return Template.of(DOC_TYPE).put("text", TEXT);
+        return DocContent.of(DOC_TYPE).put("text", TEXT);
     }
 }

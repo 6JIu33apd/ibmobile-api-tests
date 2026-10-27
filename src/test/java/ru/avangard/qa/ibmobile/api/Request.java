@@ -70,7 +70,7 @@ public final class Request {
 
     /**
      * Значение — toString(): строка, число, ObjectNode (JSON); коллекция — одноимённые параметры (secure в send_doc).
-     * null убирает параметр: кейс «без параметра» — строка таблицы, как {@code Template.set} для полей документа.
+     * null убирает параметр: кейс «без параметра» — строка таблицы, как {@code DocContent.set} для полей документа.
      */
     public Request param(String name, Object value) {
         if (value == null) {

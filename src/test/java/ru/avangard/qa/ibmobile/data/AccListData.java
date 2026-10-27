@@ -47,12 +47,12 @@ public final class AccListData {
 
     /** От большей доступной суммы к меньшей: со счёта в начале списка есть что списать. */
     private static final Comparator<Map<String, Object>> BY_OTB =
-            Comparator.comparing((Map<String, Object> a) -> new BigDecimal(String.valueOf(a.get("otb")))).reversed();
+            Comparator.comparing((Map<String, Object> account) -> new BigDecimal(String.valueOf(account.get("otb")))).reversed();
 
     private final ApiResponse response;
 
-    public AccListData(Session s) {
-        response = Request.to(ACC_LIST).as(s).post().success();
+    public AccListData(Session session) {
+        response = Request.to(ACC_LIST).as(session).post().success();
     }
 
     /** Любое поле ответа, например path("accounts.account.code"). */
@@ -62,7 +62,7 @@ public final class AccListData {
 
     /** Номера счетов типа type. */
     public List<String> accounts(AccountType type) {
-        return codes(a -> typeOf(a) == type);
+        return codes(account -> typeOf(account) == type);
     }
 
     /** Первый счёт типа type; нет счёта — кейс пропускается. */
@@ -75,12 +75,12 @@ public final class AccListData {
     /** Номера других счетов в валюте счёта account. */
     public List<String> sameCurrency(String account) {
         Object currency = account(account).get("currency");
-        return codes(a -> currency.equals(a.get("currency")) && !account.equals(a.get("code")));
+        return codes(other -> currency.equals(other.get("currency")) && !account.equals(other.get("code")));
     }
 
     private List<String> codes(Predicate<Map<String, Object>> filter) {
         List<Map<String, Object>> accounts = path("accounts.account");
-        return accounts.stream().filter(filter).sorted(BY_OTB).map(a -> (String) a.get("code")).toList();
+        return accounts.stream().filter(filter).sorted(BY_OTB).map(account -> (String) account.get("code")).toList();
     }
 
     /** Пример выборки по GPath прямо из ответа. */
@@ -89,15 +89,15 @@ public final class AccListData {
     }
 
     /** null — счёт другого типа. */
-    private static AccountType typeOf(Map<String, Object> a) {
-        boolean rub = "RUR".equals(a.get("currency"));
-        if (is(a, "cardAcc")) {
-            return is(a, "credit") ? (rub ? CREDIT : CREDIT_FX) : (rub ? DEBIT : DEBIT_FX);
+    private static AccountType typeOf(Map<String, Object> account) {
+        boolean rub = "RUR".equals(account.get("currency"));
+        if (is(account, "cardAcc")) {
+            return is(account, "credit") ? (rub ? CREDIT : CREDIT_FX) : (rub ? DEBIT : DEBIT_FX);
         }
-        if (is(a, "currAcc")) {
+        if (is(account, "currAcc")) {
             return rub ? CURRENT : CURRENT_FX;
         }
-        return is(a, "idepAcc") ? DEPOSIT : null;
+        return is(account, "idepAcc") ? DEPOSIT : null;
     }
 
     private static boolean is(Map<String, Object> account, String flag) {

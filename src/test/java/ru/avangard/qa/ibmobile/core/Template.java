@@ -10,7 +10,7 @@ import java.io.UncheckedIOException;
 /**
  * doc_content документа для prepare_doc: шаблон templates/&lt;doc_type&gt;.json (копия из Postman), в тесте меняются только нужные поля.
  * <pre>
- * Request.to(PREPARE_DOC).as(s).doc(DOC_TYPE, Template.of(DOC_TYPE).put("text", text))
+ * Request.to(PREPARE_DOC).as(session).doc(DOC_TYPE, Template.of(DOC_TYPE).put("text", text))
  * </pre>
  */
 public final class Template {
@@ -29,12 +29,12 @@ public final class Template {
     }
 
     /** Поле field = value, null — без поля (как Request.param для параметров). Значение — строка, число, список, Map. */
-    public static ObjectNode set(ObjectNode content, String field, Object value) {
+    public static ObjectNode set(ObjectNode docContent, String field, Object value) {
         if (value == null) {
-            content.remove(field);
+            docContent.remove(field);
         } else {
-            content.putPOJO(field, value);
+            docContent.putPOJO(field, value);
         }
-        return content;
+        return docContent;
     }
 }

@@ -26,13 +26,14 @@ dev.MAIN.password=...
 3. Запуск:
 
 ```
-mvnw test                        # все тесты, каждый на своём контуре
-mvnw test -Dtest=AccListTest     # один класс
-mvnw test -DexcludedGroups=prod  # без тестов prod (-Dgroups=test — только test)
-mvnw allure:serve                # отчёт
+mvnw test                            # тесты dev (без @OnTest / @OnProd)
+mvnw test -Dtest=AccListTest         # один класс
+mvnw test -Pall-envs                 # ещё и тесты test и prod, каждый на своём контуре
+mvnw test -Pall-envs -Dgroups=prod   # только тесты prod
+mvnw allure:serve                    # отчёт
 ```
 
-Из IDEA тесты запускаются как обычные JUnit-тесты.
+Из IDEA тесты запускаются как обычные JUnit-тесты, фильтр pom там не действует: запущенный тест идёт на свой контур.
 
 ## Контуры
 
@@ -45,7 +46,8 @@ mvnw allure:serve                # отчёт
 | test | `@OnTest` | только свой логин, одна сессия | по одному (`@ResourceLock("test")`) |
 | prod | `@OnProd` | только свой логин, одна сессия | по одному (`@ResourceLock("prod")`) |
 
-`@OnTest` / `@OnProd` — ещё и теги `test` / `prod` для `-Dgroups` / `-DexcludedGroups`.
+`@OnTest` / `@OnProd` — ещё и теги `test` / `prod`. В pom по умолчанию `excludedGroups=test,prod`: обычный прогон
+(и будущий CI) не трогает test и prod; профиль `-Pall-envs` снимает фильтр.
 
 ## Структура
 
@@ -54,8 +56,8 @@ src/test/java/ru/avangard/qa/ibmobile/
   config/   Config, Profile                   откуда берутся настройки контура, логины
   api/      Endpoint, DocType, Request,       ручки, типы документов, запрос, проверки ответа,
             ApiResponse, ErrorCode, Session    допустимые ошибки, сессия (логин/логаут)
-  core/     BaseTest, Login, OnTest, OnProd,   база тестов, профиль и контур теста,
-            Template, Confirm, Db              тело и подтверждение документов, чтение БД
+  core/     BaseTest, Login, OnTest, OnProd,   база тестов, профиль и контур теста, негативные кейсы,
+            Negative, Template, AuthMethod, Db тело и подтверждение документов, чтение БД
   data/     <Ручка>Data                        ответы ручек как данные для других тестов
   tests/    Section, <домен>/<Ручка>Test       тесты; Section — группы в Allure
   tools/    SchemaDraft                        черновики JSON-схем из реальных ответов
@@ -117,7 +119,7 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 
 | Вид | Как выглядит | Проверка |
 |---|---|---|
-| Бизнес-отказ (эталон) | `responseCode -1`, `resultCode FAILED`, `checkResult[{badItem, errorMessage}]` | `rejected(badItem, сообщение)` + схема `errors/check_failed.json` |
+| Бизнес-отказ (эталон) | `responseCode -1`, `resultCode FAILED`, `checkResult[{badItem, errorMessage}]` | `rejected(badItem, errorMessage)` + схема `errors/check_failed.json` |
 | Техническая ошибка | `errorCode` + `errorDesc` | `error(ErrorCode.X)` + схема формата ошибки |
 | Ошибка сервера | HTTP не 200, `errorCode` вне `ErrorCode` (например, 2 `internal_server_error`) | роняет **любой** тест: «Ошибка сервера: …» |
 
@@ -168,15 +170,15 @@ void blocked() {
 prepare_doc и send_doc — обычные ручки, вызываются как все: `Request.to(PREPARE_DOC)`, `Request.to(SEND_DOC)`.
 Тип документа — константа enum `api/DocType`; в тестовом классе — `private static final DocType DOC_TYPE = DocType.X`.
 Значение `doc_type` — имя константы в нижнем регистре; по нему же ищутся шаблон и схемы документа.
-Помогают два класса: `Template` — тело `doc_content`, `Confirm` — параметр `secure` для send_doc.
+Помогают два класса: `Template` — тело `doc_content`, `AuthMethod` — параметр `secure` для send_doc.
 
 ```java
-var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content()).post().success().matchesSchema(DOC_TYPE);
-Request.to(SEND_DOC).as(session()).param("secure", Confirm.NONE.secure(session(), prepared))
+var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent()).post().success().matchesSchema(DOC_TYPE);
+Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.NONE.secure(session(), prepared))
         .post().success().matchesSchema(DOC_TYPE);
 ```
 
-| `Confirm` | Что делает `secure(session, prepared)` |
+| `AuthMethod` | Что делает `secure(session, prepared)` |
 |---|---|
 | `NONE` | `secure` с токеном `noneAuthInit.code` |
 | `SMSPWD` | `send_confirm_sms`, затем два `secure`: код SMS и пароль. Код на dev — из `env/dev.properties`, на test/prod — из БД |
@@ -192,28 +194,27 @@ Request.to(SEND_DOC).as(session()).param("secure", Confirm.NONE.secure(session()
 В тестовом классе есть валидный вариант по умолчанию, кейс меняет в нём поля. JSON на каждый кейс не нужен.
 
 ```java
-private static ObjectNode content() {
+private static ObjectNode docContent() {
     return Template.of(DOC_TYPE).put("text", TEXT);
 }
 ```
 
-Кейсы, которые меняют одно поле, — строки таблицы `@MethodSource`. `Template.set(content, поле, значение)` меняет поле,
-`null` — убирает его; значение — строка, число, список или Map:
+Кейсы, которые меняют одно поле, — строки таблицы `@MethodSource`: `argumentSet(имя кейса, аргументы...)`.
+`Template.set(docContent, поле, значение)` меняет поле, `null` — убирает его; значение — строка, число, список или Map:
 
 ```java
 static Stream<Arguments> rejections() {
     return Stream.of(
-            arguments("пустой текст", "text", "", "text", "Заполните текст заявления"),
-            arguments("без текста", "text", null, "text", "Заполните текст"));
+            argumentSet("пустой текст", "text", "", "text", "Заполните текст заявления"),
+            argumentSet("без текста", "text", null, "text", "Заполните текст"));
 }
 
-@Story("Негативные")
 @DisplayName("Заявление отклоняется проверками")
-@ParameterizedTest(name = "({0})")
+@ParameterizedTest(name = "({argumentSetName})")
 @MethodSource("rejections")
-void rejection(String title, String field, Object value, String badItem, String message) {
-    Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(content(), field, value))
-            .post().rejected(badItem, message);
+void rejection(String field, Object value, String badItem, String errorMessage) {
+    Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(docContent(), field, value))
+            .post().rejected(badItem, errorMessage);
 }
 ```
 
@@ -223,7 +224,7 @@ void rejection(String title, String field, Object value, String badItem, String 
 (тип — по расширению; неизвестное расширение роняет тест):
 
 ```java
-Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content(), "image.png").post().success();
+Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(), "image.png").post().success();
 ```
 
 Схема документа — вариант схемы ручки: `matchesSchema(DOC_TYPE)` → `schemas/prepare_doc/<doc_type>/8.1.json`.
@@ -249,8 +250,8 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 
 - `@Epic` — группа функций из `tests/Section` (Счета, Платежи, Заявления, Аэроэкспресс, Настройки…).
 - `@Feature` — ручка или документ.
-- `@Story("Негативные")` — негативные кейсы внутри фичи.
-- Имя кейса — `@DisplayName` метода + изменяемая часть из `@ParameterizedTest(name = ...)`.
+- Story «Негативные» — негативные кейсы внутри фичи: вложенный класс `@Nested @Negative class Negatives`.
+- Имя кейса — `@DisplayName` метода + имя строки таблицы (`{argumentSetName}`) или значение (`{0}`).
 - Результаты прошлых прогонов очищаются перед каждым запуском.
 
 ## Тестовый класс
@@ -261,22 +262,24 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 
 | Порядок | Что | Ручка (`AccDetailsTest`) | Документ (`IbOurAccTransferTest`) |
 |---|---|---|---|
-| 1 | позитивные кейсы | `details(type)` | `transfer(title, from, confirm)` |
-| 2 | таблица `invalidParameters` → `error(INVALID_PARAMETERS)` | параметр запроса → значение | поле документа → значение |
-| 3 | таблица `rejections` → `rejected(badItem, сообщение)` | — | поле документа → значение |
+| 1 | позитивные кейсы | `details(type)` | `transfer(accDebType, authMethod)` |
+| 2 | `@Nested @Negative class Negatives`, в нём — таблица `invalidParameters` → `error(INVALID_PARAMETERS)` | параметр запроса → значение | поле документа → значение |
+| 3 | таблица `rejections` → `rejected(badItem, errorMessage)` | — | поле документа → значение |
 | 4 | особые кейсы — отдельные методы | — | `sameAccount()` |
 | 5 | `withoutTicket`: тот же запрос без `.as(session())` → `error(AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
-| 6 | данные по умолчанию — приватные методы внизу | `account(type)` | `content()` |
+| 6 | данные по умолчанию — приватные методы внизу внешнего класса | `account(type)` | `docContent()` |
 
 Кейс таблицы меняет одно значение в валидном запросе, `null` — убирает его:
-у ручки — `.param(name, value)`, у документа — `Template.set(content, field, value)`.
+у ручки — `.param(name, value)`, у документа — `Template.set(docContent, field, value)`.
+Имена — как у бэка: `docType`, `docContent`, `authMethod`, `accDeb`, `badItem`, `errorMessage`; без сокращений.
 
 ## Новая ручка
 
 1. Константа в `api/Endpoint` (путь без версии, название для отчёта, `true` — MULTIPART) и версия в `versions/*.properties`.
 2. Класс `tests/<домен>/<Ручка>Test extends BaseTest` с `@Epic` и `@Feature`. Кейсы — параметры.
 3. Позитивные кейсы: `success()`, `matchesSchema()`, проверка ключевых значений.
-4. Негативные кейсы — обязательно, `@Story("Негативные")`: бизнес-отказы `rejected(...)`, технические `error(...)`.
+4. Негативные кейсы — обязательно, во вложенном `@Nested @Negative class Negatives`: бизнес-отказы `rejected(...)`,
+   технические `error(...)`. Аннотация даёт Story «Негативные» всем его тестам.
 5. Документы — константа в `api/DocType`, шаблон `templates/<doc_type>.json`, в классе `DOC_TYPE`
    и `@ResourceLock("prepared_doc")` на классе.
 6. Прогнать: без схемы тест упадёт и сохранит ответ → `tools.SchemaDraft` → проверить схему → прогнать снова.
@@ -294,11 +297,15 @@ class AccListTest extends BaseTest {
         assertThat(codes).isNotEmpty().doesNotHaveDuplicates();
     }
 
-    @Story("Негативные")
-    @DisplayName("Запрос без ticket отклоняется")
-    @Test
-    void withoutTicket() {
-        Request.to(ACC_LIST).post().error(AUTHORIZATION_REQUIRED);
+    @Nested
+    @Negative
+    class Negatives {
+
+        @DisplayName("Запрос без ticket отклоняется")
+        @Test
+        void withoutTicket() {
+            Request.to(ACC_LIST).post().error(AUTHORIZATION_REQUIRED);
+        }
     }
 }
 ```

@@ -21,14 +21,14 @@ public abstract class BaseTest {
     private Session session;
 
     @BeforeEach
-    void setUp(TestInfo test) {
-        Method method = test.getTestMethod().orElseThrow();
+    void setUp(TestInfo testInfo) {
+        Method method = testInfo.getTestMethod().orElseThrow();
         Config.env(on(method, OnProd.class) ? "prod" : on(method, OnTest.class) ? "test" : "dev");
         Login login = method.getAnnotation(Login.class);
         profile = login != null ? login.value() : Profile.MAIN;
     }
 
-    /** Экземпляр класса — на каждый тест (JUnit по умолчанию), поэтому сессии параллельных тестов не пересекаются. */
+    /** Экземпляр класса — на каждый тест (JUnit по умолчанию, и в {@link Negative}): сессии тестов не пересекаются. */
     protected Session session() {
         if (session == null) {
             session = Session.login(profile);
@@ -43,7 +43,8 @@ public abstract class BaseTest {
         }
     }
 
+    /** Аннотация на методе, его классе (в том числе {@link Negative}) или классе теста. */
     private boolean on(Method method, Class<? extends Annotation> env) {
-        return method.isAnnotationPresent(env) || getClass().isAnnotationPresent(env);
+        return method.isAnnotationPresent(env) || method.getDeclaringClass().isAnnotationPresent(env) || getClass().isAnnotationPresent(env);
     }
 }

@@ -14,18 +14,18 @@ public enum ErrorCode {
     SESSION_EXPIRED(5, "session_expired", "error_result"),
     WRONG_CREDENTIALS(1000, "Некорректный логин или пароль пользователя.", "error");
 
-    final int code;
-    final String desc;
+    final int errorCode;
+    final String errorDesc;
     final String schema;
 
-    ErrorCode(int code, String desc, String schema) {
-        this.code = code;
-        this.desc = desc;
+    ErrorCode(int errorCode, String errorDesc, String schema) {
+        this.errorCode = errorCode;
+        this.errorDesc = errorDesc;
         this.schema = "schemas/errors/" + schema + ".json";
     }
 
     /** Остальные коды Request считает ошибкой сервера. */
-    static boolean allowed(int code) {
-        return Arrays.stream(values()).anyMatch(e -> e.code == code);
+    static boolean allowed(int errorCode) {
+        return Arrays.stream(values()).anyMatch(error -> error.errorCode == errorCode);
     }
 }

@@ -25,7 +25,7 @@ public final class Config {
 
     /** Тест целиком идёт в одном потоке, поэтому контур — на поток. */
     private static final ThreadLocal<String> ENV = ThreadLocal.withInitial(() -> "dev");
-    private static final Map<String, Properties> PROPS = new ConcurrentHashMap<>();
+    private static final Map<String, Properties> PROPERTIES = new ConcurrentHashMap<>();
     private static final Map<String, Properties> VERSIONS = new ConcurrentHashMap<>();
 
     private Config() {
@@ -40,43 +40,43 @@ public final class Config {
     }
 
     public static String get(String key) {
-        return required(props(), key);
+        return required(properties(), key);
     }
 
     /** null, если не задан. */
     public static String find(String key) {
-        return value(props(), key);
+        return value(properties(), key);
     }
 
     public static String version(String endpoint) {
         return required(VERSIONS.computeIfAbsent(get("release"), release -> resource("versions/" + release + ".properties")), endpoint);
     }
 
-    private static Properties props() {
-        return PROPS.computeIfAbsent(env(), env -> withSecrets(env, resource("env/" + env + ".properties")));
+    private static Properties properties() {
+        return PROPERTIES.computeIfAbsent(env(), env -> withSecrets(env, resource("env/" + env + ".properties")));
     }
 
-    private static String required(Properties props, String key) {
-        return Objects.requireNonNull(value(props, key), () -> "Не задан " + key + " (env=" + env() + ")");
+    private static String required(Properties properties, String key) {
+        return Objects.requireNonNull(value(properties, key), () -> "Не задан " + key + " (env=" + env() + ")");
     }
 
     /** Пустое значение = не задано: заготовки вида db.url= в test/prod. */
-    private static String value(Properties props, String key) {
-        String value = props.getProperty(key, "").trim();
+    private static String value(Properties properties, String key) {
+        String value = properties.getProperty(key, "").trim();
         return value.isEmpty() ? null : value;
     }
 
     /** Ключ dev.MAIN.login на dev становится MAIN.login; секреты других контуров не видны. */
-    private static Properties withSecrets(String env, Properties props) {
+    private static Properties withSecrets(String env, Properties properties) {
         Path path = Path.of(System.getProperty("user.home"), ".ibmobile", "secrets.properties");
         try {
             if (Files.exists(path)) {
                 Properties secrets = load(Files.newBufferedReader(path, UTF_8));
                 secrets.stringPropertyNames().stream()
                         .filter(key -> key.startsWith(env + "."))
-                        .forEach(key -> props.setProperty(key.substring(env.length() + 1), secrets.getProperty(key)));
+                        .forEach(key -> properties.setProperty(key.substring(env.length() + 1), secrets.getProperty(key)));
             }
-            return props;
+            return properties;
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -89,9 +89,9 @@ public final class Config {
 
     private static Properties load(Reader reader) {
         try (reader) {
-            Properties props = new Properties();
-            props.load(reader);
-            return props;
+            Properties properties = new Properties();
+            properties.load(reader);
+            return properties;
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

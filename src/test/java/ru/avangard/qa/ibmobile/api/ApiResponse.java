@@ -40,18 +40,18 @@ public final class ApiResponse {
         return this;
     }
 
-    /** Техническая ошибка: код, описание и схема своего формата. */
+    /** Техническая ошибка: errorCode, errorDesc и схема своего формата. */
     public ApiResponse error(ErrorCode expected) {
-        assertThat(response.<Integer>path("errorCode")).as("errorCode: %s", response.asString()).isEqualTo(expected.code);
-        assertThat(response.<String>path("errorDesc")).as("errorDesc").isEqualTo(expected.desc);
+        assertThat(response.<Integer>path("errorCode")).as("errorCode: %s", response.asString()).isEqualTo(expected.errorCode);
+        assertThat(response.<String>path("errorDesc")).as("errorDesc").isEqualTo(expected.errorDesc);
         return matches(expected.schema);
     }
 
-    /** Бизнес-отказ: в checkResult есть поле badItem с сообщением message. */
-    public ApiResponse rejected(String badItem, String message) {
+    /** Бизнес-отказ: в checkResult есть поле badItem с сообщением errorMessage. */
+    public ApiResponse rejected(String badItem, String errorMessage) {
         assertThat(response.<List<Map<String, Object>>>path("checkResult")).as("checkResult: %s", response.asString())
-                .extracting(c -> c.get("badItem"), c -> c.get("errorMessage"))
-                .contains(tuple(badItem, message));
+                .extracting(check -> check.get("badItem"), check -> check.get("errorMessage"))
+                .contains(tuple(badItem, errorMessage));
         return matches("schemas/errors/check_failed.json");
     }
 

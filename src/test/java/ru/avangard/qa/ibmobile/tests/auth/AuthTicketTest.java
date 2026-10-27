@@ -2,11 +2,12 @@ package ru.avangard.qa.ibmobile.tests.auth;
 
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
-import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.core.BaseTest;
+import ru.avangard.qa.ibmobile.core.Negative;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,11 +34,15 @@ class AuthTicketTest extends BaseTest {
         Request.to(ACC_LIST).as(session()).post().error(SESSION_EXPIRED);
     }
 
-    /** Только несуществующий логин: неверный пароль реального профиля копит попытки до блокировки (5, без сброса). */
-    @Story("Негативные")
-    @DisplayName("Логин несуществующего пользователя отклоняется")
-    @Test
-    void unknownLogin() {
-        Request.to(AUTH_LOGIN).param("login", "no_such_login_qa_000").param("password", "x").post().error(WRONG_CREDENTIALS);
+    @Nested
+    @Negative
+    class Negatives {
+
+        /** Только несуществующий логин: неверный пароль реального профиля копит попытки до блокировки (5, без сброса). */
+        @DisplayName("Логин несуществующего пользователя отклоняется")
+        @Test
+        void unknownLogin() {
+            Request.to(AUTH_LOGIN).param("login", "no_such_login_qa_000").param("password", "x").post().error(WRONG_CREDENTIALS);
+        }
     }
 }

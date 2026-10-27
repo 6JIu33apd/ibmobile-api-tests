@@ -12,7 +12,18 @@
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <rest-assured.version>5.5.7</rest-assured.version>
+        <!-- по умолчанию только dev; тесты @OnTest / @OnProd — с профилем -Pall-envs -->
+        <excludedGroups>test,prod</excludedGroups>
     </properties>
+
+    <profiles>
+        <profile>
+            <id>all-envs</id>
+            <properties>
+                <excludedGroups/>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencyManagement>
         <dependencies>

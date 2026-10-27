@@ -30,9 +30,9 @@ public final class Session {
 
     /** Нет профиля на контуре — тест пропускается. */
     public static Session login(Profile profile) {
-        String login = profile.login();
+        String login = Config.find(profile + ".login");
         assumeTrue(login != null, "Нет профиля " + profile + " на контуре " + Config.env());
-        String password = profile.password();
+        String password = Config.get(profile + ".password");
         return new Session(login, password, Request.to(AUTH_LOGIN).param("login", login).param("password", password).post().success());
     }
 

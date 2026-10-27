@@ -2,11 +2,12 @@ package ru.avangard.qa.ibmobile.tests.accounts;
 
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
-import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import ru.avangard.qa.ibmobile.api.Request;
 import ru.avangard.qa.ibmobile.core.BaseTest;
+import ru.avangard.qa.ibmobile.core.Negative;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
@@ -26,10 +27,20 @@ class AccListTest extends BaseTest {
         assertThat(codes).as("номера счетов").isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}"));
     }
 
-    @Story("Негативные")
-    @DisplayName("Запрос без ticket отклоняется")
-    @Test
-    void withoutTicket() {
-        Request.to(ACC_LIST).post().error(AUTHORIZATION_REQUIRED);
+    @Nested
+    @Negative
+    class Negatives {
+
+        @DisplayName("Запрос без ticket отклоняется")
+        @Test
+        void withoutTicket() {
+            Request.to(ACC_LIST).post().error(AUTHORIZATION_REQUIRED);
+        }
+
+        @DisplayName("Запрос с несуществующим ticket отклоняется")
+        @Test
+        void unknownTicket() {
+            Request.to(ACC_LIST).param("ticket", "invalid_ticket").post().error(AUTHORIZATION_REQUIRED);
+        }
     }
 }

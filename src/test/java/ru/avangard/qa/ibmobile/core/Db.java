@@ -23,11 +23,11 @@ public final class Db {
             for (int i = 0; i < params.length; i++) {
                 statement.setObject(i + 1, params[i]);
             }
-            try (var rs = statement.executeQuery()) {
-                if (!rs.next()) {
+            try (var resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
                     throw new IllegalStateException("Пусто: " + sql);
                 }
-                return rs.getString(1);
+                return resultSet.getString(1);
             }
         } catch (SQLException e) {
             throw new IllegalStateException(sql, e);

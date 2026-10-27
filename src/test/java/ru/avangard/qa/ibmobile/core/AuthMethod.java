@@ -16,10 +16,10 @@ import static ru.avangard.qa.ibmobile.api.Endpoint.SHOW_SCRETCH;
 /**
  * Способ подтверждения документа из authMethods ответа prepare_doc (QR не автоматизируется).
  * <pre>
- * Request.to(SEND_DOC).as(s).param("secure", Confirm.NONE.secure(s, prepared)).post()
+ * Request.to(SEND_DOC).as(session).param("secure", AuthMethod.NONE.secure(session, prepared)).post()
  * </pre>
  */
-public enum Confirm {
+public enum AuthMethod {
 
     NONE, SMSPWD, SCRETCH;
 
@@ -27,24 +27,24 @@ public enum Confirm {
      * Значения параметра secure для send_doc. SMSPWD и SCRETCH сначала запрашивают код (send_confirm_sms, show_scretch):
      * без этого код не принимается, а попытки ограничены. Документ ждёт send_doc 5 минут.
      */
-    public List<ObjectNode> secure(Session s, ApiResponse prepared) {
+    public List<ObjectNode> secure(Session session, ApiResponse prepared) {
         assertThat(prepared.<List<String>>path("authMethods")).as("способы подтверждения").contains(name());
         return switch (this) {
-            case NONE -> List.of(token("NONE", prepared.path("noneAuthInit.code")));
+            case NONE -> List.of(secure("NONE", prepared.path("noneAuthInit.code")));
             case SMSPWD -> {
-                Request.to(SEND_CONFIRM_SMS).as(s).post().success();
-                String code = Config.find("confirm.SMS"); // фиксированный на dev, иначе из БД
-                yield List.of(token("SMS", code != null ? code : Db.smsCode(s.login)), token("PWD", s.password));
+                Request.to(SEND_CONFIRM_SMS).as(session).post().success();
+                String smsCode = Config.find("confirm.SMS"); // фиксированный на dev, иначе из БД
+                yield List.of(secure("SMS", smsCode != null ? smsCode : Db.smsCode(session.login)), secure("PWD", session.password));
             }
             case SCRETCH -> {
-                Request.to(SHOW_SCRETCH).as(s).post().success();
-                yield List.of(token("SCRETCH", Config.get("confirm.SCRETCH")));
+                Request.to(SHOW_SCRETCH).as(session).post().success();
+                yield List.of(secure("SCRETCH", Config.get("confirm.SCRETCH")));
             }
         };
     }
 
     /** secure — JSON-строка (Jackson экранирует " и \ в пароле); SMSPWD — два параметра secure. */
-    private static ObjectNode token(String method, String token) {
-        return JsonNodeFactory.instance.objectNode().put("authMethod", method).put("authToken", token);
+    private static ObjectNode secure(String authMethod, String authToken) {
+        return JsonNodeFactory.instance.objectNode().put("authMethod", authMethod).put("authToken", authToken);
     }
 }

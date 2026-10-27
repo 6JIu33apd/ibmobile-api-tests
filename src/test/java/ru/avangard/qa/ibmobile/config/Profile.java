@@ -5,14 +5,5 @@ public enum Profile {
 
     /** Рублёвые дебетовые (2) и кредитный, рублёвый и валютные текущие, депозитный счета. */
     MAIN,
-    KILLER;
-
-    /** null, если на контуре профиля нет. */
-    public String login() {
-        return Config.find(name() + ".login");
-    }
-
-    public String password() {
-        return Config.get(name() + ".password");
-    }
+    KILLER
 }

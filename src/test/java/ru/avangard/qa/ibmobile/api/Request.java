@@ -82,15 +82,15 @@ public final class Request {
     }
 
     /** Параметры prepare_doc: doc_type, doc_content; файлы из src/test/resources/files — части file и attachmentsList. */
-    public Request doc(DocType docType, ObjectNode content, String... files) {
+    public Request doc(DocType docType, ObjectNode docContent, String... files) {
         if (files.length > 0) {
-            var attachments = content.putArray("attachmentsList");
+            var attachmentsList = docContent.putArray("attachmentsList");
             for (String file : files) {
-                attachments.addObject().put("filename", file).put("contentType", contentType(file));
+                attachmentsList.addObject().put("filename", file).put("contentType", contentType(file));
                 this.files.add(file);
             }
         }
-        return param("doc_type", docType).param("doc_content", content);
+        return param("doc_type", docType).param("doc_content", docContent);
     }
 
     public ApiResponse post() {
@@ -105,13 +105,13 @@ public final class Request {
     private ApiResponse execute(Method method) {
         String path = endpoint.path();
         return Allure.step(endpoint + ": " + method + " " + path, () -> {
-            var spec = RestAssured.given().config(CONFIG).baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
+            var specification = RestAssured.given().config(CONFIG).baseUri(Config.get("baseUrl")).filter(new AllureRestAssured());
             if (endpoint.multipart) {
-                multipart(spec);
+                multipart(specification);
             } else {
-                spec.contentType(ContentType.URLENC.withCharset(UTF_8)).body(urlencoded());
+                specification.contentType(ContentType.URLENC.withCharset(UTF_8)).body(urlencoded());
             }
-            Response response = spec.request(method, path);
+            Response response = specification.request(method, path);
             // ошибки сервера роняют любой тест, в том числе негативный
             assertThat(response.statusCode()).as("Ошибка сервера: HTTP %s %s: %s", method, path, response.asString()).isEqualTo(200);
             Integer errorCode = response.path("errorCode");
@@ -125,16 +125,16 @@ public final class Request {
     /** Тело собирается вручную: allure-rest-assured падает на одноимённых form-параметрах. */
     private String urlencoded() {
         return params.entrySet().stream()
-                .flatMap(e -> values(e.getValue()).stream()
-                        .map(v -> URLEncoder.encode(e.getKey(), UTF_8) + "=" + URLEncoder.encode(v, UTF_8)))
+                .flatMap(param -> values(param.getValue()).stream()
+                        .map(value -> URLEncoder.encode(param.getKey(), UTF_8) + "=" + URLEncoder.encode(value, UTF_8)))
                 .collect(Collectors.joining("&"));
     }
 
     /** Текстовые части — явно text/plain UTF-8, иначе кириллица в doc_content ломается. */
-    private void multipart(RequestSpecification spec) {
-        params.forEach((name, value) -> values(value).forEach(v -> spec.multiPart(
-                new MultiPartSpecBuilder(v).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
-        files.forEach(file -> spec.multiPart("file", file, bytes(file), contentType(file)));
+    private void multipart(RequestSpecification specification) {
+        params.forEach((name, value) -> values(value).forEach(text -> specification.multiPart(
+                new MultiPartSpecBuilder(text).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
+        files.forEach(file -> specification.multiPart("file", file, bytes(file), contentType(file)));
     }
 
     private static byte[] bytes(String file) {
@@ -151,6 +151,6 @@ public final class Request {
     }
 
     private static List<String> values(Object value) {
-        return value instanceof Collection<?> c ? c.stream().map(String::valueOf).toList() : List.of(String.valueOf(value));
+        return value instanceof Collection<?> collection ? collection.stream().map(String::valueOf).toList() : List.of(String.valueOf(value));
     }
 }

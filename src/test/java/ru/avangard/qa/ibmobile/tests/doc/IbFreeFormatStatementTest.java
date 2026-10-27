@@ -6,6 +6,7 @@ import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -26,6 +27,8 @@ import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
 import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_DOC;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
 
+/** Подготовленный документ бэк хранит общим для всех ticket логина: документы идут по одному. */
+@ResourceLock("prepared_doc")
 @Epic(Section.STATEMENTS)
 @Feature("Заявление в свободной форме")
 class IbFreeFormatStatementTest extends BaseTest {

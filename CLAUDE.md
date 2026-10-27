@@ -88,7 +88,10 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   `prepare_doc` с `doc_type`. Типов документов больше 30.
 - Поток: `prepare_doc` (`doc_type`, `doc_content` — JSON-строкой; файлы — части `file` + описание в `attachmentsList`
   с `filename`, `contentType`) → подтверждение способом из `authMethods` ответа → `send_doc` с `secure`.
-- `send_doc` не принимает id документа: подготовленный документ живёт в сессии 5 минут.
+- `send_doc` не принимает id документа: подготовленный документ живёт 5 минут и хранится **общим для всех ticket
+  логина** (проверено двумя сессиями MAIN: prepare_doc в B перетёр документ A → `send_confirm_sms` в A — errorCode 4).
+  Одновременные prepare_doc одного логина иногда дают errorCode 2. Поэтому классы документов —
+  `@ResourceLock("prepared_doc")`, идут по одному (prepare_doc в негативах тоже перетирает документ).
 - `secure` — JSON-строка `{"authMethod":"...","authToken":"..."}`. Способы: `NONE` (токен `noneAuthInit.code`);
   `SMSPWD` — `send_confirm_sms`, затем **два** параметра `secure` (SMS и PWD = пароль входа); `SCRETCH` —
   `show_scretch`, затем код. QR не автоматизируется. С кредитного счёта authMethod — `QR_OR_SMSPWD_OR_SCRETCH`.
@@ -191,7 +194,8 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   `Template`, `Confirm.secure`. `DocType` — enum, на класс не вешается.
 - Негативы — в каждом классе (было: общий `CommonAuthTest`); таблицы `@MethodSource` поверх валидного запроса.
 - Allure: верхний уровень — группы функций `Section` (было: «Сервисы»/«Ещё»); негативные — `@Story`.
-- Документы идут параллельно, `@Execution(SAME_THREAD)` не нужен (проверено 3 прогонами).
+- Документы — по одному (`@ResourceLock("prepared_doc")` на классе): было «параллельно, проверено 3 прогонами» —
+  проходило по случайности расписания; `-Dtest=IbOurAccTransferTest#transfer` падал каждый раз.
 - Не делаем: Lombok (зависимость и annotation processor не стоят ~20 строк), автоперезапуск упавших (скроет
   зависания dev и повторит мутирующие документы), смену json-schema-validator (draft-04 хватает), общие `$ref` для
   блоков ответа prepare_doc (каждую схему от `SchemaDraft` пришлось бы править руками), проверки остатков, `conv_rates`.

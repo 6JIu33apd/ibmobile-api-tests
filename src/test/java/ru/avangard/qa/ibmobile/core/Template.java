@@ -6,14 +6,11 @@ import ru.avangard.qa.ibmobile.api.DocType;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URLConnection;
-import java.util.List;
-import java.util.Map;
 
 /**
  * doc_content документа для prepare_doc: шаблон templates/&lt;doc_type&gt;.json (копия из Postman), в тесте меняются только нужные поля.
  * <pre>
- * Request.to(PREPARE_DOC).as(s).param("doc_type", DOC_TYPE).param("doc_content", Template.of(DOC_TYPE).put("text", text))
+ * Request.to(PREPARE_DOC).as(s).doc(DOC_TYPE, Template.of(DOC_TYPE).put("text", text))
  * </pre>
  */
 public final class Template {
@@ -39,10 +36,5 @@ public final class Template {
             content.putPOJO(field, value);
         }
         return content;
-    }
-
-    /** attachmentsList для файлов, которые прикладываются к запросу через Request.file. */
-    public static List<Map<String, String>> attachments(List<String> files) {
-        return files.stream().map(file -> Map.of("filename", file, "contentType", URLConnection.guessContentTypeFromName(file))).toList();
     }
 }

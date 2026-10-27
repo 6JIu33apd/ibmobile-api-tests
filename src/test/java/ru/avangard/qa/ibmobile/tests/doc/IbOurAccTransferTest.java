@@ -5,10 +5,7 @@ import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -36,8 +33,6 @@ import static ru.avangard.qa.ibmobile.api.ErrorCode.INVALID_PARAMETERS;
 /** Перевод между двумя своими счетами одной валюты; разные валюты — конвертация, отдельный документ. */
 @Epic(Section.PAYMENTS)
 @Feature("Перевод между своими счетами")
-@Tag("mutating")
-@Execution(ExecutionMode.SAME_THREAD) // документ живёт в сессии; похожий перевод, пока обрабатывается предыдущий, — дубль
 class IbOurAccTransferTest extends BaseTest {
 
     private static final DocType DOC_TYPE = DocType.IB_OUR_ACC_TRANSFER;
@@ -53,8 +48,7 @@ class IbOurAccTransferTest extends BaseTest {
     @MethodSource("transfers")
     void transfer(String title, AccountType from, Confirm confirm) {
         var amount = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2); // та же сумма — дубль
-        var prepared = Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-                .param("doc_content", content(from, amount))
+        var prepared = Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, content(from, amount))
                 .post().success().matchesSchema(DOC_TYPE);
         var sent = Request.to(SEND_DOC).as(session()).param("secure", confirm.secure(session(), prepared))
                 .post().success().matchesSchema(DOC_TYPE);
@@ -74,8 +68,7 @@ class IbOurAccTransferTest extends BaseTest {
     @ParameterizedTest(name = "({0})")
     @MethodSource("invalidParameters")
     void invalidParameters(String title, String field, Object value) {
-        Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-                .param("doc_content", Template.set(content(), field, value))
+        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content(), field, value))
                 .post().error(INVALID_PARAMETERS);
     }
 
@@ -91,8 +84,7 @@ class IbOurAccTransferTest extends BaseTest {
     @ParameterizedTest(name = "({0})")
     @MethodSource("rejections")
     void rejection(String title, String field, Object value, String badItem, String message) {
-        Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-                .param("doc_content", Template.set(content(), field, value))
+        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content(), field, value))
                 .post().rejected(badItem, message);
     }
 
@@ -102,8 +94,7 @@ class IbOurAccTransferTest extends BaseTest {
     @Test
     void sameAccount() {
         var content = content();
-        Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-                .param("doc_content", Template.set(content, "accCred", content.get("accDeb").asText()))
+        Request.to(PREPARE_DOC).as(session()).attachment(DOC_TYPE, Template.set(content, "accCred", content.get("accDeb").asText()))
                 .post().rejected("accCred", "Счет зачисления должен отличаться от счета списания");
     }
 
@@ -111,8 +102,7 @@ class IbOurAccTransferTest extends BaseTest {
     @DisplayName("Подготовка без ticket отклоняется")
     @Test
     void withoutTicket() {
-        Request.to(PREPARE_DOC).param("doc_type", DOC_TYPE)
-                .param("doc_content", content()).post().error(AUTHORIZATION_REQUIRED);
+        Request.to(PREPARE_DOC).attachment(DOC_TYPE, content()).post().error(AUTHORIZATION_REQUIRED);
     }
 
     /** Перевод по умолчанию: 1.00 с дебетового счёта. */

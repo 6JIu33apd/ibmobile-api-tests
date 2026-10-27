@@ -167,9 +167,7 @@ prepare_doc и send_doc — обычные ручки, вызываются ка
 Помогают два класса: `Template` — тело `doc_content`, `Confirm` — параметр `secure` для send_doc.
 
 ```java
-var prepared = Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-        .param("doc_content", content())
-        .post().success().matchesSchema(DOC_TYPE);
+var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content()).post().success().matchesSchema(DOC_TYPE);
 Request.to(SEND_DOC).as(session()).param("secure", Confirm.NONE.secure(session(), prepared))
         .post().success().matchesSchema(DOC_TYPE);
 ```
@@ -181,7 +179,6 @@ Request.to(SEND_DOC).as(session()).param("secure", Confirm.NONE.secure(session()
 | `SCRETCH` | `show_scretch`, затем код из `env/dev.properties` (только dev) |
 
 - Способ задаётся в кейсе заранее; `secure` запрашивает код только для него и проверяет, что он есть в `authMethods`.
-- Классы с документами — `@Tag("mutating")` и `@Execution(SAME_THREAD)`: иначе параллельные кейсы ловят отказ-дубль.
 - Суммы — только `BigDecimal` (`ApiResponse.decimal`): double даёт `1.5699999999999998`.
   Суммы позитивных кейсов случайные (1.01–9.99), чтобы не ловить отказ-дубль.
 
@@ -211,20 +208,17 @@ static Stream<Arguments> rejections() {
 @ParameterizedTest(name = "({0})")
 @MethodSource("rejections")
 void rejection(String title, String field, Object value, String badItem, String message) {
-    Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-            .param("doc_content", Template.set(content(), field, value))
+    Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, Template.set(content(), field, value))
             .post().rejected(badItem, message);
 }
 ```
 
 Кейс со сложной логикой (несколько полей, свои проверки) — отдельный метод.
 
-Вложения: файл из `files/` — `Request.file(name)`, его описание в `doc_content` — `Template.attachments(files)`:
+Вложения — файлы из `files/` последними аргументами `doc`: они уходят частями `file` и сами попадают в `attachmentsList`:
 
 ```java
-var request = Request.to(PREPARE_DOC).as(session()).param("doc_type", DOC_TYPE)
-        .param("doc_content", Template.set(content(), "attachmentsList", Template.attachments(files)));
-files.forEach(request::file);
+Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, content(), "image.png").post().success();
 ```
 
 Схема документа — вариант схемы ручки: `matchesSchema(DOC_TYPE)` → `schemas/prepare_doc/<doc_type>/8.1.json`.
@@ -270,7 +264,6 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 
 Кейс таблицы меняет одно значение в валидном запросе, `null` — убирает его:
 у ручки — `.param(name, value)`, у документа — `Template.set(content, field, value)`.
-Документы дополнительно — `@Tag("mutating")` и `@Execution(SAME_THREAD)`.
 
 ## Новая ручка
 
@@ -278,8 +271,7 @@ accList.path("accounts.account.currency");   // любое поле — по п�
 2. Класс `tests/<домен>/<Ручка>Test extends BaseTest` с `@Epic` и `@Feature`. Кейсы — параметры.
 3. Позитивные кейсы: `success()`, `matchesSchema()`, проверка ключевых значений.
 4. Негативные кейсы — обязательно, `@Story("Негативные")`: бизнес-отказы `rejected(...)`, технические `error(...)`.
-5. Документы — константа в `api/DocType`, шаблон `templates/<doc_type>.json`, в классе `DOC_TYPE`,
-   `@Tag("mutating")`, `@Execution(SAME_THREAD)`.
+5. Документы — константа в `api/DocType`, шаблон `templates/<doc_type>.json`, в классе `DOC_TYPE`.
 6. Прогнать: без схемы тест упадёт и сохранит ответ → `tools.SchemaDraft` → проверить схему → прогнать снова.
 7. Для prod — `@Tag("prod")` и только то, что безопасно под своим логином.
 
@@ -307,4 +299,5 @@ class AccListTest extends BaseTest {
 ## Параллельность
 
 JUnit гоняет классы и кейсы параллельно, число потоков — `threads` контура (`config/Threads`).
-У каждого теста свой экземпляр класса и своя сессия. Классы с документами — `SAME_THREAD`.
+У каждого теста свой экземпляр класса и своя сессия, поэтому документы тоже идут параллельно:
+подготовленный документ живёт в сессии своего теста.

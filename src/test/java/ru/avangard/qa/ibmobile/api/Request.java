@@ -1,5 +1,6 @@
 package ru.avangard.qa.ibmobile.api;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.qameta.allure.Allure;
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
@@ -71,10 +72,16 @@ public final class Request {
         return this;
     }
 
-    /** Файл из src/test/resources/files частью file (вложение документа, см. {@code Template.attachments}). */
-    public Request file(String name) {
-        files.add(new File("src/test/resources/files", name));
-        return this;
+    /** Параметры prepare_doc: doc_type, doc_content; файлы из src/test/resources/files — части file и attachmentsList. */
+    public Request attachment(DocType docType, ObjectNode content, String... files) {
+        if (files.length > 0) {
+            var attachments = content.putArray("attachmentsList");
+            for (String file : files) {
+                attachments.addObject().put("filename", file).put("contentType", URLConnection.guessContentTypeFromName(file));
+                this.files.add(new File("src/test/resources/files", file));
+            }
+        }
+        return param("doc_type", docType).param("doc_content", content);
     }
 
     public ApiResponse post() {

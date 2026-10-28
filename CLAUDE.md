@@ -181,7 +181,8 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   prod идут по одному (одна сессия на логин), и `@Tag("<env>")`. Проверено без сети. `release` — в `env/<env>.properties`.
 - **Любая ручка — только `Request.to(endpoint)...post()`** (DELETE — только логаут). `execute` — шаг Allure,
   тайм-ауты 10 с / 2 мин, HTTP 200 и допустимый errorCode. URLENC-тело собирается вручную (allure-rest-assured падает
-  с ClassCastException на одноимённых form-параметрах). Multipart-тексты явно `text/plain; UTF-8` (иначе кириллица).
+  с ClassCastException на одноимённых form-параметрах). Multipart-тексты явно `text/plain; UTF-8` (иначе кириллица). allure-rest-assured 3 пишет multipart с пустым
+  `form` — части прикладываются вложением «Части multipart» из `Request.multipart`.
 - Дробные числа ответа — `BigDecimal` (`NumberReturnType.BIG_DECIMAL`): по умолчанию Rest Assured даёт `Float`,
   `12345678.91` → `12345679` (проверено); целые остаются `Integer`.
 - `Request.doc(docType, docContent, files...)` — вложения из classpath `files/`; тип по расширению, неизвестный роняет тест.

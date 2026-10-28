@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -134,11 +135,22 @@ public final class Request {
                 .collect(Collectors.joining("&"));
     }
 
-    /** Текстовые части — явно text/plain UTF-8, иначе кириллица в doc_content ломается. */
+    /**
+     * Текстовые части — явно text/plain UTF-8, иначе кириллица в doc_content ломается.
+     * allure-rest-assured части multipart не пишет — они уходят в Allure отдельным вложением.
+     */
     private void multipart(RequestSpecification specification) {
-        params.forEach((name, value) -> values(value).forEach(text -> specification.multiPart(
-                new MultiPartSpecBuilder(text).controlName(name).mimeType("text/plain").charset(UTF_8).build())));
-        files.forEach(file -> specification.multiPart("file", file, bytes(file), contentType(file)));
+        var parts = new StringJoiner("\n");
+        params.forEach((name, value) -> values(value).forEach(text -> {
+            specification.multiPart(new MultiPartSpecBuilder(text).controlName(name).mimeType("text/plain").charset(UTF_8).build());
+            parts.add(name + ": " + text);
+        }));
+        files.forEach(file -> {
+            byte[] bytes = bytes(file);
+            specification.multiPart("file", file, bytes, contentType(file));
+            parts.add("file: " + file + " (" + contentType(file) + ", " + bytes.length + " байт)");
+        });
+        Allure.attachment("Части multipart", parts.toString());
     }
 
     private static byte[] bytes(String file) {

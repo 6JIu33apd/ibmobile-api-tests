@@ -8,8 +8,12 @@
 Контрактные API-тесты бэкенда розничного интернет-банка «Авангард» (ibMobile, Java, REST/JSON, ~100 ручек).
 Репозиторий `https://github.com/6JIu33apd/ibmobile-api-tests`, ветка `main`, локально
 `C:\Users\6JIu33apd\Documents\Idea\ibmobile-api-tests` (Windows 11, IDEA, Git Bash / PowerShell, `git core.autocrlf=true`).
-Стек: Java 25, Maven (`mvnw`), JUnit 5.14.3, Rest Assured 5.5.7 (+ json-schema-validator), Allure 2.31.0
-(отчёт 2.34.0, allure-maven 2.15.2), AssertJ 3.27.6, Jackson 2.20.2, ojdbc11 23.4.0.24.05, surefire 3.5.6.
+Стек: Java 25, Maven (`mvnw`), JUnit 6.1.3, Rest Assured 6.3.0 (+ json-schema-validator; Groovy 5, httpclient 4.5),
+Allure 3.0.1 (`allure-jupiter` — бывший `allure-junit5`; `Allure.attachment` вместо `addAttachment`; запрос и ответ —
+одно вложение «HTTP exchange»), отчёт 2.46.1 через allure-maven 3.1.0 (история прогонов — в `.allure/history`),
+AssertJ 3.27.6, Jackson 2.22.4, ojdbc11 23.26.3.0.0, surefire 3.5.6.
+`dependency:analyze` — только плагином ≥ 3.9.0 (3.7.0 не читает байт-код Java 25); его «unused» для `junit-jupiter`,
+`allure-jupiter`, `ojdbc11` ложные (агрегатор и runtime).
 Swagger нет — схемы пишем сами. GitLab CI и связь с KiwiTCMS — позже, пока запуск локальный.
 
 ## Правила работы

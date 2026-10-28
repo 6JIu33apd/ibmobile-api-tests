@@ -1,7 +1,7 @@
 # ibmobile-api-tests
 
 Контрактные API-тесты бэкенда розничного интернет-банка (ibMobile, REST/JSON).
-Стек: Java 25, Maven, JUnit 5, Rest Assured, Allure, AssertJ, Jackson.
+Стек: Java 25, Maven, JUnit 6, Rest Assured 6, Allure 3, AssertJ, Jackson.
 
 Что проверяем:
 - **контракт** — каждый ответ сверяется со строгой JSON-схемой (лишнее поле — ошибка);

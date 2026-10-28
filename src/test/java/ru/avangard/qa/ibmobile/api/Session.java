@@ -49,7 +49,7 @@ public final class Session {
         try {
             logout();
         } catch (Exception | AssertionError e) {
-            Allure.addAttachment("Логаут не удался", e.toString());
+            Allure.attachment("Логаут не удался", e.toString());
         }
     }
 }

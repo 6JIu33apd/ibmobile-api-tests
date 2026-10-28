@@ -48,6 +48,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 - Терминология счетов: дебетовый, кредитный, текущий, депозитный. **Не говорить «карточный» и «расчётный».**
   Слово `Kind` не использовать (для пользователя это «добрый») — `Type`.
 - Тестовые данные создаёт пользователь («я король базы») — не проектировать их подготовку.
+- Профиль KILLER — для своих нужд (образцы для схем и т. п.), в тесты не добавлять.
 
 ## Бэкенд
 
@@ -82,6 +83,9 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 - Допустимые технические ошибки — только errorCode 1 `authorization_required` (нет ticket), 4 `invalid_parameters`,
   5 `session_expired` (формат с `resultCode`/`resultMessage`, схема `error_result.json`), 1000 «Некорректный логин
   или пароль пользователя.». Формат `{"errorCode":N,"errorDesc":"..."}` — схема `error.json`.
+- errorCode 403 «Превышено допустимое количество запросов. Попробуйте повторить позднее» — сервер заблокировал
+  за частые запросы (было при полном прогоне с 7 заявлениями chargeback). Тест — broken (`IllegalStateException`),
+  не failed: сбой окружения, а не ручки; в `ErrorCode` не добавлять. Ограничение снимает пользователь.
 - Любой другой errorCode (например, 2 `internal_server_error`) и HTTP не 200 — ошибка сервера, роняет **любой** тест,
   в том числе негативный («Ошибка сервера: …»). Сервер не должен отдавать 500.
 
@@ -133,6 +137,21 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 - `acc_details/5.0`: без счёта или «123» → errorCode 4; чужой валидный счёт → errorCode 2 `internal_server_error` —
   похоже на дефект, пользователь разбирается сам, кейса нет.
 - Несуществующий ticket (`invalid_ticket`) → errorCode 1 `authorization_required` (не 5).
+- `prior_info/6.0` (`doc_type`): данные есть для `ib_pay_rub`, `ib_inside_pay_rub` (`nextDocNumber`, типы документов
+  личности), `ib_card_chargeback_statement` (`accountList` с картами `cards[].id`, `chargebackReasons` 1–7),
+  `ib_card_order_statement`; для `ib_our_acc_transfer`, `ib_free_format_statement`, `ib_card_block_statement`,
+  `ib_card_reissue` → errorCode 4 (не факт, что ручка их поддерживает: в `DocType` есть, в тестах нет);
+  без / неизвестный doc_type → 4. Под KILLER chargeback не отвечает за 2 мин (остальные типы отвечают).
+- `ib_card_chargeback_statement` (шаблон `{"cardId","description","reasonType","opersList","attachmentsList"}`):
+  карта — из prior_info, операция `5931036292` — из образца пользователя (принимается с любой картой MAIN).
+  authMethods `QR, SMSPWD, SCRETCH`; скретч на dev проходит с `11111` (`scretchInit.restCount` 3). Отказы:
+  без вложения → `all` «Прикрепление документов обязательно» (проверяется раньше остальных полей); вложение без
+  файла → `lobFile`; пустое / без `description` → `all` «Заполните description»; без `cardId` → «Заполните cardId»;
+  пустой / без `opersList` → «Укажите хотя бы одну операцию». Повторная отправка по той же операции проходит.
+  Позитив — по кейсу на каждую причину `reasonType` 1–7 (разные сценарии). Несуществующая операция `1` →
+  errorCode 2: кейс `unknownOperation` падает, так и оставить (решение пользователя). `cardId` 0 / чужой и
+  `reasonType` 0 / 999 проходят — детальные проверки пишет пользователь. В ответе send_doc `opersList` и
+  `opersDetails` удвоены (`[id, id]` при одной операции).
 - `prepare_doc` без `doc_type` → HTTP 500.
 - dev иногда не отвечает: acc_details висел 300 с, prepare_doc с вложением — дольше 60 с; перезапуск проходит.
   **acc_list под профилем KILLER не отвечает и за 2 мин** (разбирается; тесты под KILLER пользователь снял).
@@ -175,8 +194,9 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 
 ### Последний прогон на dev
 
-34 теста, все прошли: `AccDetailsTest` 10 (2 пропуска: нет валютных дебетовых/кредитных), `AccListTest` 3,
-`AuthTicketTest` 3, `IbFreeFormatStatementTest` 6, `IbOurAccTransferTest` 12.
+57 тестов: `AccDetailsTest` 10 (2 пропуска: нет валютных дебетовых/кредитных), `AccListTest` 3,
+`AuthTicketTest` 3, `IbCardChargebackStatementTest` 16 (падает `unknownOperation` — errorCode 2, так задумано), `IbFreeFormatStatementTest` 6, `IbOurAccTransferTest` 12,
+`PriorInfoTest` 7.
 
 ## Окружение и подводные камни
 
@@ -229,6 +249,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 - acc_list под KILLER не отвечает за 2 мин.
 - Одноразовые профили для негативов неверного пароля и блокировки.
 - Классы для ручек подтверждения (`send_confirm_sms`, `show_scretch`).
+- Операции карты для chargeback: кроме prior_info есть ещё ручка — пользователь скажет, какую добавить.
 - Тесты, меняющие настройку клиента (лимит «без ограничений» и т. п.), должны вернуть значение назад даже при
   падении, иначе пропадёт образец. Таких тестов пока нет; с первым — откат в `BaseTest` до логаута.
 - Конвертация (перевод между счетами разных валют); остальные ~30 типов документов в `DocType`.

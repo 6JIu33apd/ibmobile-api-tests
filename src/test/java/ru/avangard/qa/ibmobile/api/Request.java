@@ -115,6 +115,10 @@ public final class Request {
             // ошибки сервера роняют любой тест, в том числе негативный
             assertThat(response.statusCode()).as("Ошибка сервера: HTTP %s %s: %s", method, path, response.asString()).isEqualTo(200);
             Integer errorCode = response.path("errorCode");
+            // не ошибка ручки: в Allure — broken, а не failed; перезапустить после снятия ограничения
+            if (errorCode != null && errorCode == 403) {
+                throw new IllegalStateException("Сервер ограничил частоту запросов: " + response.asString());
+            }
             if (errorCode != null && !ErrorCode.allowed(errorCode)) {
                 fail("Ошибка сервера: недопустимый errorCode %s %s: %s", method, path, response.asString());
             }

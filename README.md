@@ -123,6 +123,7 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 | Бизнес-отказ (эталон) | `responseCode -1`, `resultCode FAILED`, `checkResult[{badItem, errorMessage}]` | `rejected(badItem, errorMessage)` + схема `errors/check_failed.json` |
 | Техническая ошибка | `errorCode` + `errorDesc` | `error(ErrorCode.X)` + схема формата ошибки |
 | Ошибка сервера | HTTP не 200, `errorCode` вне `ErrorCode` (например, 2 `internal_server_error`) | роняет **любой** тест: «Ошибка сервера: …» |
+| Лимит запросов | `errorCode 403` «Превышено допустимое количество запросов…» | тест broken: «Сервер ограничил частоту запросов», перезапустить позже |
 
 Допустимые технические ошибки — только из `ErrorCode`:
 

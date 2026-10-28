@@ -13,6 +13,7 @@ public enum Endpoint {
     SHOW_SCRETCH("Auth/show_scretch", "Запрос кода со скретч-карты"),
     ACC_LIST("Statement/acc_list", "Список счетов"),
     ACC_DETAILS("Statement/acc_details", "Деталка счета"),
+    PRIOR_INFO("Doc/prior_info", "Данные для документа"),
     PREPARE_DOC("Doc/prepare_doc", "Подготовка документа", true),
     SEND_DOC("Doc/send_doc", "Отправка документа");
 

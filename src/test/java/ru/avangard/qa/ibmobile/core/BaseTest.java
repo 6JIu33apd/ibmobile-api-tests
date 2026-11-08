@@ -44,7 +44,7 @@ public abstract class BaseTest {
     }
 
     /** Аннотация на методе, его классе (в том числе {@link Negative}) или классе теста. */
-    private boolean on(Method method, Class<? extends Annotation> env) {
-        return method.isAnnotationPresent(env) || method.getDeclaringClass().isAnnotationPresent(env) || getClass().isAnnotationPresent(env);
+    private boolean on(Method method, Class<? extends Annotation> anno) {
+        return method.isAnnotationPresent(anno) || method.getDeclaringClass().isAnnotationPresent(anno) || getClass().isAnnotationPresent(anno);
     }
 }

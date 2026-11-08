@@ -62,8 +62,8 @@ public final class Config {
 
     /** Пустое значение = не задано: заготовки вида db.url= в test/prod. */
     private static String value(Properties properties, String key) {
-        String value = properties.getProperty(key, "").trim();
-        return value.isEmpty() ? null : value;
+        String value = properties.getProperty(key, "");
+        return value.isBlank() ? null : value;
     }
 
     /** Ключ dev.MAIN.login на dev становится MAIN.login; секреты других контуров не видны. */

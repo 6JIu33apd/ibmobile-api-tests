@@ -1,5 +1,6 @@
 target/
 .allure/
 .idea/
+.ai/
 # коллекции Postman: реальные счета и карты
 postman/

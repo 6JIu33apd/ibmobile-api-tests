@@ -33,26 +33,28 @@ public final class DocContent {
     /**
      * Поле по пути = value, null — без поля (как Request.param для параметров). Значение — строка, число, список, Map.
      * Путь — через точку на любую глубину, индекс массива — число: "amount", "payer.address.city", "attachmentsList.0.filename".
-     * Родитель поля должен быть в шаблоне: опечатка в пути роняет тест, а не добавляет лишнее поле.
+     * Поле должно существовать: опечатка в пути роняет тест, а не добавляет лишнее поле.
      */
     public static ObjectNode set(ObjectNode docContent, String path, Object value) {
         JsonPointer pointer = JsonPointer.compile("/" + path.replace('.', '/'));
         var parent = docContent.at(pointer.head());
         var last = pointer.last();
+        if (parent.at(last).isMissingNode()) {
+            throw new IllegalArgumentException("Нет поля " + path + " в " + docContent);
+        }
+        var node = MAPPER.valueToTree(value);
         if (parent instanceof ObjectNode object) {
             if (value == null) {
                 object.remove(last.getMatchingProperty());
             } else {
-                object.putPOJO(last.getMatchingProperty(), value);
+                object.set(last.getMatchingProperty(), node);
             }
-        } else if (parent instanceof ArrayNode array && last.getMatchingIndex() >= 0) {
+        } else if (parent instanceof ArrayNode array) {
             if (value == null) {
                 array.remove(last.getMatchingIndex());
             } else {
-                array.set(last.getMatchingIndex(), array.pojoNode(value));
+                array.set(last.getMatchingIndex(), node);
             }
-        } else {
-            throw new IllegalArgumentException("Нет поля " + path + " в " + docContent);
         }
         return docContent;
     }

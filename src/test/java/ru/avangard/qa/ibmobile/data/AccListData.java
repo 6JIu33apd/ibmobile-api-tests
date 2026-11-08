@@ -38,6 +38,7 @@ public final class AccListData {
      */
     public List<String> codes(String condition) {
         List<Map<String, Object>> accounts = path("accounts.account");
+        assumeFalse(accounts.isEmpty(), "Нет счетов");
         var fields = accounts.stream().flatMap(account -> account.keySet().stream()).collect(Collectors.toSet());
         var unknown = FIELD.matcher(condition).results().map(field -> field.group(1)).filter(field -> !fields.contains(field)).toList();
         assertThat(unknown).as("нет у счетов полей из условия %s", condition).isEmpty();

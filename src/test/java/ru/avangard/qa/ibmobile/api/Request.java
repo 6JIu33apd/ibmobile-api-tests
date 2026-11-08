@@ -5,12 +5,12 @@ import io.qameta.allure.Allure;
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
 import io.restassured.builder.MultiPartSpecBuilder;
+import io.restassured.common.config.NumberReturnType;
 import io.restassured.config.HttpClientConfig;
 import io.restassured.config.JsonConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.restassured.http.Method;
-import io.restassured.path.json.config.JsonPathConfig.NumberReturnType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import ru.avangard.qa.ibmobile.config.Config;
@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -47,8 +48,8 @@ public final class Request {
      */
     private static final RestAssuredConfig CONFIG = RestAssuredConfig.config()
             .httpClient(HttpClientConfig.httpClientConfig()
-                    .setParam("http.connection.timeout", 10_000)
-                    .setParam("http.socket.timeout", 120_000))
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .readTimeout(Duration.ofMinutes(2)))
             .jsonConfig(JsonConfig.jsonConfig().numberReturnType(NumberReturnType.BIG_DECIMAL));
 
     private final Endpoint endpoint;
@@ -84,6 +85,7 @@ public final class Request {
 
     /** Параметры prepare_doc: doc_type, doc_content; файлы из src/test/resources/files — части file и attachmentsList. */
     public Request doc(DocType docType, ObjectNode docContent, String... files) {
+        this.files.clear();
         if (files.length > 0) {
             var attachmentsList = docContent.putArray("attachmentsList");
             for (String file : files) {
@@ -115,7 +117,8 @@ public final class Request {
             Response response = specification.request(method, path);
             // ошибки сервера роняют любой тест, в том числе негативный
             assertThat(response.statusCode()).as("Ошибка сервера: HTTP %s %s: %s", method, path, response.asString()).isEqualTo(200);
-            Integer errorCode = response.path("errorCode");
+            var result = new ApiResponse(endpoint, response);
+            Integer errorCode = result.path("errorCode");
             // не ошибка ручки: в Allure — broken, а не failed; перезапустить после снятия ограничения
             if (errorCode != null && errorCode == 403) {
                 throw new IllegalStateException("Сервер ограничил частоту запросов: " + response.asString());
@@ -123,7 +126,7 @@ public final class Request {
             if (errorCode != null && !ErrorCode.allowed(errorCode)) {
                 fail("Ошибка сервера: недопустимый errorCode %s %s: %s", method, path, response.asString());
             }
-            return new ApiResponse(endpoint, response);
+            return result;
         });
     }
 
@@ -150,7 +153,7 @@ public final class Request {
             specification.multiPart("file", file, bytes, contentType(file));
             parts.add("file: " + file + " (" + contentType(file) + ", " + bytes.length + " байт)");
         });
-        Allure.attachment("Части multipart", parts.toString());
+        Allure.attachment("Параметры запроса", parts.toString());
     }
 
     private static byte[] bytes(String file) {

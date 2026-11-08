@@ -3,7 +3,8 @@
   "type" : "object",
   "properties" : {
     "responseCode" : {
-      "type" : "integer"
+      "type" : "integer",
+      "enum" : [ 1 ]
     },
     "authMethod" : {
       "type" : "string"
@@ -59,7 +60,8 @@
           }
         },
         "docType" : {
-          "type" : "string"
+          "type" : "string",
+          "enum" : [ "ib_free_format_statement" ]
         },
         "availableForPrinting" : {
           "type" : "string"
@@ -81,10 +83,12 @@
       }
     },
     "checkSuccess" : {
-      "type" : "boolean"
+      "type" : "boolean",
+      "enum" : [ true ]
     },
     "resultCode" : {
-      "type" : "string"
+      "type" : "string",
+      "enum" : [ "SUCCESS" ]
     },
     "resultMessage" : {
       "type" : "string"

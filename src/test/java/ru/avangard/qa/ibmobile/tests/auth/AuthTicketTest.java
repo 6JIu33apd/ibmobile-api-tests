@@ -10,7 +10,6 @@ import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Negative;
 import ru.avangard.qa.ibmobile.tests.Section;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
 import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.SESSION_EXPIRED;
@@ -24,13 +23,12 @@ class AuthTicketTest extends BaseTest {
     @Test
     void login() {
         session().loginResponse.matchesSchema();
-        assertThat(session().ticket).isNotBlank();
     }
 
     @DisplayName("После логаута ticket недействителен")
     @Test
     void logout() {
-        session().logout().matchesSchema();
+        session().logout();
         Request.to(ACC_LIST).as(session()).post().error(SESSION_EXPIRED);
     }
 

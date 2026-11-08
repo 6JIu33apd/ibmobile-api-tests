@@ -1,6 +1,7 @@
 package ru.avangard.qa.ibmobile.api;
 
 import io.qameta.allure.Allure;
+import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 
 import java.math.BigDecimal;
@@ -26,15 +27,21 @@ public final class ApiResponse {
 
     private final Endpoint endpoint;
     private final Response response;
+    /** Один раз разбирает JSON с конфигурацией чисел из Request. */
+    private final JsonPath json;
 
     ApiResponse(Endpoint endpoint, Response response) {
         this.endpoint = endpoint;
         this.response = response;
+        json = response.jsonPath();
     }
 
-    /** Ответ без отказа: нет errorCode и resultCode не FAILED. */
+    /** Ответ без технической ошибки, отказа проверок и ошибки подтверждения. */
     public ApiResponse success() {
-        if (response.path("errorCode") != null || "FAILED".equals(response.path("resultCode"))) {
+        String resultCode = path("resultCode");
+        if (path("errorCode") != null || Integer.valueOf(-1).equals(path("responseCode"))
+                || (resultCode != null && !"SUCCESS".equals(resultCode))
+                || Boolean.FALSE.equals(path("checkSuccess")) || Boolean.TRUE.equals(path("secureCheck.errorExist"))) {
             fail("%s вернул отказ: %s", endpoint, response.asString());
         }
         return this;
@@ -42,16 +49,16 @@ public final class ApiResponse {
 
     /** Техническая ошибка: errorCode, errorDesc и схема своего формата. */
     public ApiResponse error(ErrorCode expected) {
-        assertThat(response.<Integer>path("errorCode")).as("errorCode: %s", response.asString()).isEqualTo(expected.errorCode);
-        assertThat(response.<String>path("errorDesc")).as("errorDesc").isEqualTo(expected.errorDesc);
+        assertThat(this.<Integer>path("errorCode")).as("errorCode: %s", response.asString()).isEqualTo(expected.errorCode);
+        assertThat(this.<String>path("errorDesc")).as("errorDesc").isEqualTo(expected.errorDesc);
         return matches(expected.schema);
     }
 
     /** Бизнес-отказ: в checkResult есть поле badItem с сообщением errorMessage. */
     public ApiResponse rejected(String badItem, String errorMessage) {
-        assertThat(response.<List<Map<String, Object>>>path("checkResult")).as("checkResult: %s", response.asString())
-                .extracting(check -> check.get("badItem"), check -> check.get("errorMessage"))
-                .contains(tuple(badItem, errorMessage));
+        assertThat(this.<List<Map<String, Object>>>path("checkResult")).as("checkResult: %s", response.asString())
+                .extracting(check -> check.get("badItem"), check -> check.get("errorMessage"), check -> check.get("error"))
+                .contains(tuple(badItem, errorMessage, true));
         return matches("schemas/errors/check_failed.json");
     }
 
@@ -67,12 +74,12 @@ public final class ApiResponse {
 
     /** Поле ответа по GPath Rest Assured: "doc.amount", "accounts.account.code". */
     public <T> T path(String path) {
-        return response.path(path);
+        return json.get(path);
     }
 
     /** Денежное значение без потери точности. */
     public BigDecimal decimal(String path) {
-        return new BigDecimal(response.path(path).toString());
+        return new BigDecimal(path(path).toString());
     }
 
     /** Нет схемы — ответ сохраняется образцом, тест падает: схему не пропустить. */

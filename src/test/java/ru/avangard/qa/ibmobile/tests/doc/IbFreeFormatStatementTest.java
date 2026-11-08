@@ -51,8 +51,10 @@ class IbFreeFormatStatementTest extends BaseTest {
                 .post().success().matchesSchema(DOC_TYPE);
         assertThat(prepared.<String>path("doc.text")).as("текст заявления").isEqualTo(TEXT);
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").isEqualTo(files);
-        Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.NONE.secure(session(), prepared))
+        var sent = Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.NONE.secure(session(), prepared))
                 .post().success().matchesSchema(DOC_TYPE);
+        assertThat(sent.<String>path("doc.text")).as("текст заявления").isEqualTo(TEXT);
+        assertThat(sent.<List<String>>path("doc.attachmentsList.filename")).as("вложения").isEqualTo(files);
     }
 
     @Nested

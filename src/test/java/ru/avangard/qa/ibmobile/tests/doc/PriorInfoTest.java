@@ -14,8 +14,10 @@ import ru.avangard.qa.ibmobile.core.BaseTest;
 import ru.avangard.qa.ibmobile.core.Negative;
 import ru.avangard.qa.ibmobile.tests.Section;
 
+import java.util.List;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PRIOR_INFO;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
@@ -28,17 +30,22 @@ class PriorInfoTest extends BaseTest {
 
     static Stream<Arguments> docTypes() {
         return Stream.of(
-                argumentSet("внешний рублёвый перевод", DocType.IB_PAY_RUB),
-                argumentSet("внутренний рублёвый платёж", DocType.IB_INSIDE_PAY_RUB),
-                argumentSet("заявление о несогласии с операцией", DocType.IB_CARD_CHARGEBACK_STATEMENT),
-                argumentSet("заявление на выпуск карты", DocType.IB_CARD_ORDER_STATEMENT));
+                argumentSet("внешний рублёвый перевод", DocType.IB_PAY_RUB, "otherPersonDocumentList"),
+                argumentSet("внутренний рублёвый платёж", DocType.IB_INSIDE_PAY_RUB, "otherPersonDocumentList"),
+                argumentSet("заявление о несогласии с операцией", DocType.IB_CARD_CHARGEBACK_STATEMENT, "accountList.cards.flatten().id"),
+                argumentSet("заявление на выпуск карты", DocType.IB_CARD_ORDER_STATEMENT, "availableAccounts"));
     }
 
     @DisplayName("Данные для документа")
     @ParameterizedTest(name = "({argumentSetName})")
     @MethodSource("docTypes")
-    void priorInfo(DocType docType) {
-        Request.to(PRIOR_INFO).as(session()).param("doc_type", docType).post().success().matchesSchema(docType);
+    void priorInfo(DocType docType, String listPath) {
+        var priorInfo = Request.to(PRIOR_INFO).as(session()).param("doc_type", docType).post().success().matchesSchema(docType);
+        assertThat(priorInfo.<List<?>>path(listPath)).as(listPath).isNotEmpty();
+        if (docType == DocType.IB_CARD_CHARGEBACK_STATEMENT) {
+            assertThat(priorInfo.<List<Integer>>path("chargebackReasons.reasonType")).as("причины несогласия")
+                    .containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7);
+        }
     }
 
     @Nested

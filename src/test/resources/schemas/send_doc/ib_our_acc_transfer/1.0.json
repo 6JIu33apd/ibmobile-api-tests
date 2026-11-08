@@ -3,13 +3,15 @@
   "type": "object",
   "properties": {
     "responseCode": {
-      "type": "integer"
+      "type": "integer",
+      "enum": [1]
     },
     "secureCheck": {
       "type": "object",
       "properties": {
         "errorExist": {
-          "type": "boolean"
+          "type": "boolean",
+          "enum": [false]
         }
       },
       "required": [
@@ -72,7 +74,8 @@
           "type": "string"
         },
         "docType": {
-          "type": "string"
+          "type": "string",
+          "enum": ["ib_our_acc_transfer"]
         },
         "docStatus": {
           "type": "string"
@@ -111,10 +114,12 @@
       }
     },
     "checkSuccess": {
-      "type": "boolean"
+      "type": "boolean",
+      "enum": [true]
     },
     "resultCode": {
-      "type": "string"
+      "type": "string",
+      "enum": ["SUCCESS"]
     },
     "resultMessage": {
       "type": "string"

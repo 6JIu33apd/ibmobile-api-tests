@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PRIOR_INFO;
@@ -53,18 +54,26 @@ class IbCardChargebackStatementTest extends BaseTest {
                 argumentSet("иное", 7));
     }
 
-    @DisplayName("Заявление о несогласии с операцией по карте, подтверждение скретч-кодом")
+    @DisplayName("Заявление о несогласии с операцией по карте")
     @ParameterizedTest(name = "({argumentSetName})")
     @MethodSource("reasons")
     void statement(int reasonType) {
         var docContent = docContent().put("reasonType", reasonType);
+        var opersList = docContent.withArray("opersList").valueStream().map(oper -> oper.asLong()).toList();
         var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent, FILE)
                 .post().success().matchesSchema(DOC_TYPE);
-        assertThat(prepared.<Long>path("doc.cardId")).as("карта").isEqualTo(docContent.get("cardId").asLong());
+        assertThat(prepared.<Number>path("doc.cardId").longValue()).as("карта").isEqualTo(docContent.get("cardId").asLong());
         assertThat(prepared.<Integer>path("doc.reasonType")).as("причина").isEqualTo(reasonType);
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").containsExactly(FILE);
-        Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.SCRETCH.secure(session(), prepared))
+        assertThat(prepared.<List<Number>>path("doc.opersList")).as("операции").extracting(Number::longValue).containsExactlyElementsOf(opersList);
+        var sent = Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.SCRETCH.secure(session(), prepared))
                 .post().success().matchesSchema(DOC_TYPE);
+        assertThat(sent.<Number>path("doc.cardId").longValue()).as("карта").isEqualTo(docContent.get("cardId").asLong());
+        assertThat(sent.<Integer>path("doc.reasonType")).as("причина").isEqualTo(reasonType);
+        assertThat(sent.<String>path("doc.description")).as("описание").isEqualTo(docContent.get("description").asText());
+        assertThat(sent.<List<String>>path("doc.attachmentsList.filename")).as("вложения").containsExactly(FILE);
+        assertThat(sent.<List<Number>>path("doc.opersList")).as("операции").extracting(Number::longValue)
+                .containsExactlyElementsOf(Stream.concat(opersList.stream(), opersList.stream()).toList());
     }
 
     @Nested
@@ -121,8 +130,9 @@ class IbCardChargebackStatementTest extends BaseTest {
 
     /** Заявление по умолчанию: первая карта из prior_info, операция и причина — из шаблона. */
     private ObjectNode docContent() {
-        List<Long> cardIds = Request.to(PRIOR_INFO).as(session()).param("doc_type", DOC_TYPE).post().success()
+        List<Number> cardIds = Request.to(PRIOR_INFO).as(session()).param("doc_type", DOC_TYPE).post().success()
                 .path("accountList.cards.flatten().id");
-        return DocContent.of(DOC_TYPE).put("cardId", cardIds.getFirst()).put("description", "Заявление автотеста о несогласии с операцией");
+        assumeFalse(cardIds.isEmpty(), "Нет карты для заявления о несогласии с операцией");
+        return DocContent.of(DOC_TYPE).put("cardId", cardIds.getFirst().longValue()).put("description", "Заявление автотеста о несогласии с операцией");
     }
 }

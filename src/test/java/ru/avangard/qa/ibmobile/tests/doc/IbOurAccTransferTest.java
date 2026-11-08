@@ -55,11 +55,14 @@ class IbOurAccTransferTest extends BaseTest {
     @MethodSource("transfers")
     void transfer(String accDebCondition, AuthMethod authMethod) {
         var amount = randomAmount();
-        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(accDebCondition, amount))
+        var docContent = docContent(accDebCondition, amount);
+        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent)
                 .post().success().matchesSchema(DOC_TYPE);
         var sent = Request.to(SEND_DOC).as(session()).param("secure", authMethod.secure(session(), prepared))
                 .post().success().matchesSchema(DOC_TYPE);
         assertThat(sent.decimal("doc.amount")).as("сумма").isEqualByComparingTo(amount);
+        assertThat(sent.<String>path("doc.accDeb")).as("счёт списания").isEqualTo(docContent.get("accDeb").asText());
+        assertThat(sent.<String>path("doc.accCred")).as("счёт зачисления").isEqualTo(docContent.get("accCred").asText());
     }
 
     @Nested
@@ -130,7 +133,7 @@ class IbOurAccTransferTest extends BaseTest {
         }
     }
 
-    /** Отправляемые переводы — со случайной суммой: та же сумма — отказ-дубль. */
+    /** Случайная сумма снижает вероятность отказа-дубля. */
     private static BigDecimal randomAmount() {
         return BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2);
     }

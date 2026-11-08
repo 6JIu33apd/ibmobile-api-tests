@@ -4,6 +4,7 @@ import io.qameta.allure.Allure;
 import ru.avangard.qa.ibmobile.config.Config;
 import ru.avangard.qa.ibmobile.config.Profile;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
 import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGOUT;
@@ -25,6 +26,7 @@ public final class Session {
         this.login = login;
         this.password = password;
         this.ticket = loginResponse.path("ticket");
+        assertThat(ticket).as("ticket").isNotBlank();
         this.loginResponse = loginResponse;
     }
 
@@ -38,7 +40,7 @@ public final class Session {
 
     public ApiResponse logout() {
         loggedOut = true;
-        return Request.to(AUTH_LOGOUT).as(this).delete();
+        return Request.to(AUTH_LOGOUT).as(this).delete().success().matchesSchema();
     }
 
     /** Повторно не разлогинивает; ошибка логаута — вложение в Allure, а не падение теста. */

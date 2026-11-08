@@ -3,7 +3,8 @@
   "type" : "object",
   "properties" : {
     "responseCode" : {
-      "type" : "integer"
+      "type" : "integer",
+      "enum" : [ 0 ]
     }
   },
   "required" : [ "responseCode" ],

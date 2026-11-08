@@ -3,35 +3,47 @@
   "type" : "object",
   "properties" : {
     "responseCode" : {
-      "type" : "integer"
+      "type" : "integer",
+      "enum" : [ 1 ]
     },
     "authMethod" : {
       "type" : "string"
     },
     "scretchInit" : {
-      "type" : "object",
-      "properties" : {
-        "responseCode" : {
-          "type" : "integer"
+      "oneOf" : [ {
+        "type" : "object",
+        "properties" : {
+          "responseCode" : {
+            "type" : "integer"
+          },
+          "badCount" : {
+            "type" : "integer"
+          },
+          "restCount" : {
+            "type" : "integer"
+          },
+          "cardNumber" : {
+            "type" : "string"
+          },
+          "resultCode" : {
+            "type" : "string"
+          },
+          "resultMessage" : {
+            "type" : "string"
+          }
         },
-        "badCount" : {
-          "type" : "integer"
+        "required" : [ "responseCode", "badCount", "restCount", "cardNumber", "resultCode", "resultMessage" ],
+        "additionalProperties" : false
+      }, {
+        "type" : "object",
+        "properties" : {
+          "responseCode" : { "type" : "integer", "enum" : [ -1 ] },
+          "resultCode" : { "type" : "string", "enum" : [ "NO_ACTIVE_CARD" ] },
+          "resultMessage" : { "type" : "string" }
         },
-        "restCount" : {
-          "type" : "integer"
-        },
-        "cardNumber" : {
-          "type" : "string"
-        },
-        "resultCode" : {
-          "type" : "string"
-        },
-        "resultMessage" : {
-          "type" : "string"
-        }
-      },
-      "required" : [ "responseCode", "badCount", "restCount", "cardNumber", "resultCode", "resultMessage" ],
-      "additionalProperties" : false
+        "required" : [ "responseCode", "resultCode", "resultMessage" ],
+        "additionalProperties" : false
+      } ]
     },
     "smsInit" : {
       "type" : "object",
@@ -183,7 +195,8 @@
           }
         },
         "docType" : {
-          "type" : "string"
+          "type" : "string",
+          "enum" : [ "ib_card_chargeback_statement" ]
         },
         "availableForPrinting" : {
           "type" : "string"
@@ -205,10 +218,12 @@
       }
     },
     "checkSuccess" : {
-      "type" : "boolean"
+      "type" : "boolean",
+      "enum" : [ true ]
     },
     "resultCode" : {
-      "type" : "string"
+      "type" : "string",
+      "enum" : [ "SUCCESS" ]
     },
     "resultMessage" : {
       "type" : "string"

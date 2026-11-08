@@ -4,7 +4,8 @@
   "type": "object",
   "properties": {
     "responseCode": {
-      "type": "integer"
+      "type": "integer",
+      "enum": [-1]
     },
     "authMethods": {
       "type": "array",

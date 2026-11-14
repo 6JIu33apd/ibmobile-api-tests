@@ -2,104 +2,52 @@
   "$schema" : "http://json-schema.org/draft-04/schema#",
   "type" : "object",
   "properties" : {
-    "pushEnabled" : {
-      "type" : "boolean"
-    },
-    "notificationsCanBeEnabled" : {
-      "type" : "boolean"
-    },
-    "termsUrl" : {
-      "type" : "string"
-    },
+    "pushEnabled" : { "type" : "boolean" },
+    "notificationsCanBeEnabled" : { "type" : "boolean" },
+    "termsUrl" : { "type" : "string" },
     "lastUsedDep" : {
       "type" : "object",
       "properties" : {
-        "clf" : {
-          "type" : "integer"
-        },
-        "label" : {
-          "type" : "string"
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "address" : {
-          "type" : "string"
-        },
-        "category" : {
-          "type" : "integer"
-        },
-        "code" : {
-          "type" : "string"
-        },
-        "workMode" : {
-          "type" : "integer"
-        },
-        "workTime" : {
-          "type" : "integer"
-        },
-        "sysFilial" : {
-          "type" : "integer"
-        },
-        "depType" : {
-          "type" : "integer"
-        },
-        "accCodeBranch" : {
-          "type" : "string"
-        },
-        "accCodeFilial" : {
-          "type" : "string"
-        },
-        "regionName" : {
-          "type" : "string"
-        },
-        "timeShift" : {
-          "type" : "integer"
-        },
-        "key" : {
-          "type" : "integer"
-        }
+        "clf" : { "type" : "integer" },
+        "label" : { "type" : "string" },
+        "description" : { "type" : "string" },
+        "address" : { "type" : "string" },
+        "category" : { "type" : "integer" },
+        "code" : { "type" : "string" },
+        "workMode" : { "type" : "integer" },
+        "workTime" : { "type" : "integer" },
+        "sysFilial" : { "type" : "integer" },
+        "depType" : { "type" : "integer" },
+        "accCodeBranch" : { "type" : "string" },
+        "accCodeFilial" : { "type" : "string" },
+        "regionName" : { "type" : "string" },
+        "timeShift" : { "type" : "integer" },
+        "key" : { "type" : "integer" }
       },
       "required" : [ "clf", "label", "description", "address", "category", "code", "workMode", "workTime", "sysFilial", "depType", "accCodeBranch", "accCodeFilial", "regionName", "timeShift", "key" ],
       "additionalProperties" : false
     },
     "availableCurrencies" : {
       "type" : "array",
-      "items" : {
-        "type" : "string"
-      }
+      "items" : { "type" : "string" }
     },
     "creditList" : {
       "type" : "array",
       "items" : {
         "type" : "object",
         "properties" : {
-          "registerName" : {
-            "type" : "string"
-          },
-          "bankName" : {
-            "type" : "string"
-          },
-          "amount" : {
-            "type" : "number"
-          },
-          "creditType" : {
-            "type" : "integer"
-          },
-          "creditLoanOtherId" : {
-            "type" : "integer"
-          },
-          "answer" : {
-            "type" : "integer"
-          }
+          "registerName" : { "type" : "string" },
+          "bankName" : { "type" : "string" },
+          "amount" : { "type" : "number" },
+          "creditType" : { "type" : "integer" },
+          "creditLoanOtherId" : { "type" : "integer" },
+          "answer" : { "type" : "integer" }
         },
         "required" : [ "registerName", "bankName", "amount", "creditType", "creditLoanOtherId", "answer" ],
         "additionalProperties" : false
       }
     },
-    "needCreditInfo" : {
-      "type" : "boolean"
-    },
+    "needCreditInfo" : { "type" : "boolean" },
     "dictionary" : {
       "type" : "object",
       "properties" : {
@@ -108,18 +56,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -134,18 +76,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -160,18 +96,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "integer"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "integer" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -186,18 +116,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -212,18 +136,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -238,18 +156,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -264,18 +176,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -290,18 +196,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "string"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "string" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -316,18 +216,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "integer"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "integer" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -342,18 +236,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "integer"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "integer" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -368,18 +256,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "integer"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "integer" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -394,18 +276,12 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "label" : {
-                "type" : "string"
-              },
+              "label" : { "type" : "string" },
               "value" : {
                 "type" : "object",
                 "properties" : {
-                  "type" : {
-                    "type" : "string"
-                  },
-                  "value" : {
-                    "type" : "integer"
-                  }
+                  "type" : { "type" : "string" },
+                  "value" : { "type" : "integer" }
                 },
                 "required" : [ "type", "value" ],
                 "additionalProperties" : false
@@ -421,13 +297,9 @@
     },
     "availableAccounts" : {
       "type" : "array",
-      "items" : {
-        "type" : "string"
-      }
+      "items" : { "type" : "string" }
     },
-    "embossedName" : {
-      "type" : "string"
-    }
+    "embossedName" : { "type" : "string" }
   },
   "required" : [ "pushEnabled", "notificationsCanBeEnabled", "termsUrl", "availableCurrencies", "creditList", "needCreditInfo", "dictionary", "availableAccounts", "embossedName" ],
   "additionalProperties" : false

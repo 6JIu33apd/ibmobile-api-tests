@@ -2,10 +2,7 @@
   "$schema" : "http://json-schema.org/draft-04/schema#",
   "type" : "object",
   "properties" : {
-    "responseCode" : {
-      "type" : "integer",
-      "enum" : [ 0 ]
-    }
+    "responseCode" : { "type" : "integer", "enum" : [ 0 ] }
   },
   "required" : [ "responseCode" ],
   "additionalProperties" : false

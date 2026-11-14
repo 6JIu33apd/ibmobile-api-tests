@@ -1,46 +1,41 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
-import io.qameta.allure.Epic;
-import io.qameta.allure.Feature;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import io.restassured.response.Response;
+import io.qameta.allure.*;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 import ru.avangard.qa.ibmobile.api.DocType;
-import ru.avangard.qa.ibmobile.api.Request;
-import ru.avangard.qa.ibmobile.core.BaseTest;
-import ru.avangard.qa.ibmobile.core.Negative;
+import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Map;
 
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
-import static ru.avangard.qa.ibmobile.api.Endpoint.PRIOR_INFO;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.INVALID_PARAMETERS;
+import static ru.avangard.qa.ibmobile.api.Endpoint.*;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
+import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
 
-/** Данные для заполнения документа; у каждого doc_type свой ответ и своя схема. */
+/** Контракт prior_info и наличие данных для документа; структура ответа и схема зависят от doc_type. */
 @Epic(Section.REFS)
 @Feature("Данные для документа")
 class PriorInfoTest extends BaseTest {
+    static final Arguments[] DOC_TYPES = {
+        argumentSet("внешний рублёвый перевод", DocType.IB_PAY_RUB, "otherPersonDocumentList"),
+        argumentSet("внутренний рублёвый платёж", DocType.IB_INSIDE_PAY_RUB, "otherPersonDocumentList"),
+        argumentSet("заявление о несогласии с операцией", DocType.IB_CARD_CHARGEBACK_STATEMENT, "accountList.cards.flatten().id"),
+        argumentSet("заявление на выпуск карты", DocType.IB_CARD_ORDER_STATEMENT, "availableAccounts")
+    };
 
-    static Stream<Arguments> docTypes() {
-        return Stream.of(
-                argumentSet("внешний рублёвый перевод", DocType.IB_PAY_RUB, "otherPersonDocumentList"),
-                argumentSet("внутренний рублёвый платёж", DocType.IB_INSIDE_PAY_RUB, "otherPersonDocumentList"),
-                argumentSet("заявление о несогласии с операцией", DocType.IB_CARD_CHARGEBACK_STATEMENT, "accountList.cards.flatten().id"),
-                argumentSet("заявление на выпуск карты", DocType.IB_CARD_ORDER_STATEMENT, "availableAccounts"));
-    }
-
-    @DisplayName("Данные для документа")
-    @ParameterizedTest(name = "({argumentSetName})")
-    @MethodSource("docTypes")
+    @ParameterizedTest(name = "Данные для документа ({argumentSetName})")
+    @FieldSource("DOC_TYPES")
     void priorInfo(DocType docType, String listPath) {
-        var priorInfo = Request.to(PRIOR_INFO).as(session()).param("doc_type", docType).post().success().matchesSchema(docType);
+        Response priorInfo = given().formParam("ticket", session().ticket).formParam("doc_type", docType.toString()).post(PRIOR_INFO.path());
+        success(priorInfo);
+        matchesSchema(priorInfo, PRIOR_INFO.schema(docType));
         assertThat(priorInfo.<List<?>>path(listPath)).as(listPath).isNotEmpty();
         if (docType == DocType.IB_CARD_CHARGEBACK_STATEMENT) {
             assertThat(priorInfo.<List<Integer>>path("chargebackReasons.reasonType")).as("причины несогласия")
@@ -48,29 +43,24 @@ class PriorInfoTest extends BaseTest {
         }
     }
 
-    @Nested
-    @Negative
+    @Nested @Negative
     class Negatives {
+        static final Arguments[] INVALID_CASES = {
+            argumentSet("без doc_type", (Object) null),
+            argumentSet("неизвестный doc_type", "no_such_doc")
+        };
 
-        /** Параметр запроса по умолчанию → значение (null — без параметра). */
-        static Stream<Arguments> invalidParameters() {
-            return Stream.of(
-                    argumentSet("без doc_type", "doc_type", null),
-                    argumentSet("неизвестный doc_type", "doc_type", "no_such_doc"));
-        }
-
-        @DisplayName("Запрос с некорректными параметрами отклоняется")
-        @ParameterizedTest(name = "({argumentSetName})")
-        @MethodSource("invalidParameters")
-        void invalidParameters(String param, Object value) {
-            Request.to(PRIOR_INFO).as(session()).param("doc_type", DocType.IB_PAY_RUB).param(param, value)
-                    .post().error(INVALID_PARAMETERS);
+        @ParameterizedTest(name = "Запрос с некорректными параметрами отклоняется ({argumentSetName})")
+        @FieldSource("INVALID_CASES")
+        void invalidParameters(Object value) {
+            error(given().formParam("ticket", session().ticket)
+                    .formParams(value == null ? Map.of() : Map.of("doc_type", value)).post(PRIOR_INFO.path()), INVALID_PARAMETERS);
         }
 
         @DisplayName("Запрос без ticket отклоняется")
         @Test
         void withoutTicket() {
-            Request.to(PRIOR_INFO).param("doc_type", DocType.IB_PAY_RUB).post().error(AUTHORIZATION_REQUIRED);
+            error(given().formParam("doc_type", DocType.IB_PAY_RUB.toString()).post(PRIOR_INFO.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

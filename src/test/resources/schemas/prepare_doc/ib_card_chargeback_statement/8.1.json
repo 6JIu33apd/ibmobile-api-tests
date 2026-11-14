@@ -2,67 +2,43 @@
   "$schema" : "http://json-schema.org/draft-04/schema#",
   "type" : "object",
   "properties" : {
-    "responseCode" : {
-      "type" : "integer",
-      "enum" : [ 1 ]
-    },
-    "authMethod" : {
-      "type" : "string"
-    },
+    "responseCode" : { "type" : "integer", "enum" : [ 1 ] },
+    "authMethod" : { "type" : "string" },
     "scretchInit" : {
-      "oneOf" : [ {
-        "type" : "object",
-        "properties" : {
-          "responseCode" : {
-            "type" : "integer"
+      "oneOf" : [
+        {
+          "type" : "object",
+          "properties" : {
+            "responseCode" : { "type" : "integer" },
+            "badCount" : { "type" : "integer" },
+            "restCount" : { "type" : "integer" },
+            "cardNumber" : { "type" : "string" },
+            "resultCode" : { "type" : "string" },
+            "resultMessage" : { "type" : "string" }
           },
-          "badCount" : {
-            "type" : "integer"
-          },
-          "restCount" : {
-            "type" : "integer"
-          },
-          "cardNumber" : {
-            "type" : "string"
-          },
-          "resultCode" : {
-            "type" : "string"
-          },
-          "resultMessage" : {
-            "type" : "string"
-          }
+          "required" : [ "responseCode", "badCount", "restCount", "cardNumber", "resultCode", "resultMessage" ],
+          "additionalProperties" : false
         },
-        "required" : [ "responseCode", "badCount", "restCount", "cardNumber", "resultCode", "resultMessage" ],
-        "additionalProperties" : false
-      }, {
-        "type" : "object",
-        "properties" : {
-          "responseCode" : { "type" : "integer", "enum" : [ -1 ] },
-          "resultCode" : { "type" : "string", "enum" : [ "NO_ACTIVE_CARD" ] },
-          "resultMessage" : { "type" : "string" }
-        },
-        "required" : [ "responseCode", "resultCode", "resultMessage" ],
-        "additionalProperties" : false
-      } ]
+        {
+          "type" : "object",
+          "properties" : {
+            "responseCode" : { "type" : "integer", "enum" : [ -1 ] },
+            "resultCode" : { "type" : "string", "enum" : [ "NO_ACTIVE_CARD" ] },
+            "resultMessage" : { "type" : "string" }
+          },
+          "required" : [ "responseCode", "resultCode", "resultMessage" ],
+          "additionalProperties" : false
+        }
+      ]
     },
     "smsInit" : {
       "type" : "object",
       "properties" : {
-        "responseCode" : {
-          "type" : "integer"
-        },
-        "phone" : {
-          "type" : "string"
-        },
-        "startDate" : {
-          "type" : "string"
-        },
-        "resultCode" : {
-          "type" : "string"
-        },
-        "resultMessage" : {
-          "type" : "string"
-        }
+        "responseCode" : { "type" : "integer" },
+        "phone" : { "type" : "string" },
+        "startDate" : { "type" : "string" },
+        "resultCode" : { "type" : "string" },
+        "resultMessage" : { "type" : "string" }
       },
       "required" : [ "responseCode", "phone", "startDate", "resultCode", "resultMessage" ],
       "additionalProperties" : false
@@ -70,24 +46,12 @@
     "qrInit" : {
       "type" : "object",
       "properties" : {
-        "responseCode" : {
-          "type" : "integer"
-        },
-        "longTicketStatus" : {
-          "type" : "string"
-        },
-        "pk" : {
-          "type" : "string"
-        },
-        "qrLink" : {
-          "type" : "string"
-        },
-        "resultCode" : {
-          "type" : "string"
-        },
-        "resultMessage" : {
-          "type" : "string"
-        }
+        "responseCode" : { "type" : "integer" },
+        "longTicketStatus" : { "type" : "string" },
+        "pk" : { "type" : "string" },
+        "qrLink" : { "type" : "string" },
+        "resultCode" : { "type" : "string" },
+        "resultMessage" : { "type" : "string" }
       },
       "required" : [ "responseCode", "longTicketStatus", "pk", "qrLink", "resultCode", "resultMessage" ],
       "additionalProperties" : false
@@ -95,59 +59,29 @@
     "doc" : {
       "type" : "object",
       "properties" : {
-        "docDate" : {
-          "type" : "string"
-        },
-        "fullName" : {
-          "type" : "string"
-        },
-        "cardId" : {
-          "type" : "integer"
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "reasonType" : {
-          "type" : "integer"
-        },
+        "docDate" : { "type" : "string" },
+        "fullName" : { "type" : "string" },
+        "cardId" : { "type" : "integer" },
+        "description" : { "type" : "string" },
+        "reasonType" : { "type" : "integer" },
         "opersList" : {
           "type" : "array",
-          "items" : {
-            "type" : "integer"
-          }
+          "items" : { "type" : "integer" }
         },
-        "docTypeDesc" : {
-          "type" : "string"
-        },
+        "docTypeDesc" : { "type" : "string" },
         "opersDetails" : {
           "type" : "array",
           "items" : {
             "type" : "object",
             "properties" : {
-              "operId" : {
-                "type" : "integer"
-              },
-              "operType" : {
-                "type" : "string"
-              },
-              "operAmount" : {
-                "type" : "number"
-              },
-              "operCurrency" : {
-                "type" : "string"
-              },
-              "operDate" : {
-                "type" : "string"
-              },
-              "chargeAmount" : {
-                "type" : "number"
-              },
-              "chargeCurrency" : {
-                "type" : "string"
-              },
-              "shopName" : {
-                "type" : "string"
-              }
+              "operId" : { "type" : "integer" },
+              "operType" : { "type" : "string" },
+              "operAmount" : { "type" : "number" },
+              "operCurrency" : { "type" : "string" },
+              "operDate" : { "type" : "string" },
+              "chargeAmount" : { "type" : "number" },
+              "chargeCurrency" : { "type" : "string" },
+              "shopName" : { "type" : "string" }
             },
             "required" : [ "operId", "operType", "operAmount", "operCurrency", "operDate", "chargeAmount", "chargeCurrency", "shopName" ],
             "additionalProperties" : false
@@ -156,17 +90,11 @@
         "reasonDetail" : {
           "type" : "object",
           "properties" : {
-            "reasonType" : {
-              "type" : "integer"
-            },
-            "reasonName" : {
-              "type" : "string"
-            },
+            "reasonType" : { "type" : "integer" },
+            "reasonName" : { "type" : "string" },
             "listOfAttaches" : {
               "type" : "array",
-              "items" : {
-                "type" : "string"
-              }
+              "items" : { "type" : "string" }
             }
           },
           "required" : [ "reasonType", "reasonName", "listOfAttaches" ],
@@ -177,57 +105,32 @@
           "items" : {
             "type" : "object",
             "properties" : {
-              "filename" : {
-                "type" : "string"
-              },
-              "filesize" : {
-                "type" : "integer"
-              },
-              "md5" : {
-                "type" : "string"
-              },
-              "contentType" : {
-                "type" : "string"
-              }
+              "filename" : { "type" : "string" },
+              "filesize" : { "type" : "integer" },
+              "md5" : { "type" : "string" },
+              "contentType" : { "type" : "string" }
             },
             "required" : [ "filename", "filesize", "md5", "contentType" ],
             "additionalProperties" : false
           }
         },
-        "docType" : {
-          "type" : "string",
-          "enum" : [ "ib_card_chargeback_statement" ]
-        },
-        "availableForPrinting" : {
-          "type" : "string"
-        }
+        "docType" : { "type" : "string", "enum" : [ "ib_card_chargeback_statement" ] },
+        "availableForPrinting" : { "type" : "string" }
       },
       "required" : [ "docDate", "fullName", "cardId", "description", "reasonType", "opersList", "docTypeDesc", "opersDetails", "reasonDetail", "attachmentsList", "docType", "availableForPrinting" ],
       "additionalProperties" : false
     },
     "authMethods" : {
       "type" : "array",
-      "items" : {
-        "type" : "string"
-      }
+      "items" : { "type" : "string" }
     },
     "checkResult" : {
       "type" : "array",
-      "items" : {
-        "$ref" : "../../errors/check_failed.json#/properties/checkResult/items"
-      }
+      "items" : { "$ref" : "../../errors/check_failed.json#/properties/checkResult/items" }
     },
-    "checkSuccess" : {
-      "type" : "boolean",
-      "enum" : [ true ]
-    },
-    "resultCode" : {
-      "type" : "string",
-      "enum" : [ "SUCCESS" ]
-    },
-    "resultMessage" : {
-      "type" : "string"
-    }
+    "checkSuccess" : { "type" : "boolean", "enum" : [ true ] },
+    "resultCode" : { "type" : "string", "enum" : [ "SUCCESS" ] },
+    "resultMessage" : { "type" : "string" }
   },
   "required" : [ "responseCode", "authMethod", "scretchInit", "smsInit", "qrInit", "doc", "authMethods", "checkResult", "checkSuccess", "resultCode", "resultMessage" ],
   "additionalProperties" : false

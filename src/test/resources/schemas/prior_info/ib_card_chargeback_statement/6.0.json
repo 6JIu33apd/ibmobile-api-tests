@@ -10,102 +10,38 @@
           "account" : {
             "type" : "object",
             "properties" : {
-              "classified" : {
-                "type" : "integer"
-              },
-              "code" : {
-                "type" : "string"
-              },
-              "type" : {
-                "type" : "integer"
-              },
-              "currency" : {
-                "type" : "string"
-              },
-              "openDate" : {
-                "type" : "string"
-              },
-              "typeForDeposit" : {
-                "type" : "integer"
-              },
-              "accountLabel" : {
-                "type" : "string"
-              },
-              "balanceHidden" : {
-                "type" : "boolean"
-              },
-              "isCredit" : {
-                "type" : "boolean"
-              },
-              "archivedCardsCount" : {
-                "type" : "integer"
-              },
-              "pinChangeNeededCount" : {
-                "type" : "integer"
-              },
-              "hasFeeDebtForSomeCard" : {
-                "type" : "boolean"
-              },
-              "credit" : {
-                "type" : "boolean"
-              },
-              "currOthAcc" : {
-                "type" : "boolean"
-              },
-              "currIntAcc" : {
-                "type" : "boolean"
-              },
-              "autoCreditAcc" : {
-                "type" : "boolean"
-              },
-              "softCurrencyAcc" : {
-                "type" : "boolean"
-              },
-              "readOnlyAcc" : {
-                "type" : "boolean"
-              },
-              "mayBePreference" : {
-                "type" : "boolean"
-              },
-              "labelForDeposit" : {
-                "type" : "string"
-              },
-              "depAcc" : {
-                "type" : "boolean"
-              },
-              "suplAcc" : {
-                "type" : "boolean"
-              },
-              "idepAcc" : {
-                "type" : "boolean"
-              },
-              "pmaAcc" : {
-                "type" : "boolean"
-              },
-              "balance" : {
-                "type" : "number"
-              },
-              "otb" : {
-                "type" : "number"
-              },
-              "multivalCardAcc" : {
-                "type" : "boolean"
-              },
-              "cardAcc" : {
-                "type" : "boolean"
-              },
-              "currAcc" : {
-                "type" : "boolean"
-              },
-              "typeForFront" : {
-                "type" : "integer"
-              },
-              "accIsUr" : {
-                "type" : "boolean"
-              },
-              "labelForFront" : {
-                "type" : "string"
-              }
+              "classified" : { "type" : "integer" },
+              "code" : { "type" : "string" },
+              "type" : { "type" : "integer" },
+              "currency" : { "type" : "string" },
+              "openDate" : { "type" : "string" },
+              "typeForDeposit" : { "type" : "integer" },
+              "accountLabel" : { "type" : "string" },
+              "balanceHidden" : { "type" : "boolean" },
+              "isCredit" : { "type" : "boolean" },
+              "archivedCardsCount" : { "type" : "integer" },
+              "pinChangeNeededCount" : { "type" : "integer" },
+              "hasFeeDebtForSomeCard" : { "type" : "boolean" },
+              "credit" : { "type" : "boolean" },
+              "currOthAcc" : { "type" : "boolean" },
+              "currIntAcc" : { "type" : "boolean" },
+              "autoCreditAcc" : { "type" : "boolean" },
+              "softCurrencyAcc" : { "type" : "boolean" },
+              "readOnlyAcc" : { "type" : "boolean" },
+              "mayBePreference" : { "type" : "boolean" },
+              "labelForDeposit" : { "type" : "string" },
+              "depAcc" : { "type" : "boolean" },
+              "suplAcc" : { "type" : "boolean" },
+              "idepAcc" : { "type" : "boolean" },
+              "pmaAcc" : { "type" : "boolean" },
+              "balance" : { "type" : "number" },
+              "otb" : { "type" : "number" },
+              "multivalCardAcc" : { "type" : "boolean" },
+              "cardAcc" : { "type" : "boolean" },
+              "currAcc" : { "type" : "boolean" },
+              "typeForFront" : { "type" : "integer" },
+              "accIsUr" : { "type" : "boolean" },
+              "labelForFront" : { "type" : "string" }
             },
             "required" : [ "classified", "code", "type", "currency", "openDate", "typeForDeposit", "accountLabel", "balanceHidden", "isCredit", "archivedCardsCount", "pinChangeNeededCount", "hasFeeDebtForSomeCard", "credit", "currOthAcc", "currIntAcc", "autoCreditAcc", "softCurrencyAcc", "readOnlyAcc", "mayBePreference", "labelForDeposit", "depAcc", "suplAcc", "idepAcc", "pmaAcc", "balance", "otb", "multivalCardAcc", "cardAcc", "currAcc", "typeForFront", "accIsUr", "labelForFront" ],
             "additionalProperties" : false
@@ -115,114 +51,42 @@
             "items" : {
               "type" : "object",
               "properties" : {
-                "expired" : {
-                  "type" : "boolean"
-                },
-                "validFrom" : {
-                  "type" : "string"
-                },
-                "supplementary" : {
-                  "type" : "boolean"
-                },
-                "statusCode" : {
-                  "type" : "integer"
-                },
-                "cardTypeDesc" : {
-                  "type" : "string"
-                },
-                "depName" : {
-                  "type" : "string"
-                },
-                "cardLabel" : {
-                  "type" : "string"
-                },
-                "photo" : {
-                  "type" : "string"
-                },
-                "paySystem" : {
-                  "type" : "string"
-                },
-                "active" : {
-                  "type" : "boolean"
-                },
-                "archive" : {
-                  "type" : "boolean"
-                },
-                "express" : {
-                  "type" : "boolean"
-                },
-                "virtual" : {
-                  "type" : "boolean"
-                },
-                "schoolFood" : {
-                  "type" : "boolean"
-                },
-                "accountCode" : {
-                  "type" : "string"
-                },
-                "ignorable" : {
-                  "type" : "boolean"
-                },
-                "electron" : {
-                  "type" : "boolean"
-                },
-                "maestro" : {
-                  "type" : "boolean"
-                },
-                "embossedName" : {
-                  "type" : "string"
-                },
-                "validThruMonth" : {
-                  "type" : "string"
-                },
-                "validThruYear" : {
-                  "type" : "string"
-                },
-                "masterCard" : {
-                  "type" : "boolean"
-                },
-                "pinChangeNeeded" : {
-                  "type" : "boolean"
-                },
-                "pinChangePossible" : {
-                  "type" : "boolean"
-                },
-                "pinChangeInProgress" : {
-                  "type" : "boolean"
-                },
-                "visible" : {
-                  "type" : "boolean"
-                },
-                "visa" : {
-                  "type" : "boolean"
-                },
-                "mir" : {
-                  "type" : "boolean"
-                },
-                "id" : {
-                  "type" : "integer"
-                },
-                "number" : {
-                  "type" : "string"
-                },
-                "dateOfExpire" : {
-                  "type" : "string"
-                },
-                "type_old" : {
-                  "type" : "string"
-                },
-                "statusDesc" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                },
-                "airBonus" : {
-                  "type" : "boolean"
-                },
-                "typeId" : {
-                  "type" : "integer"
-                }
+                "expired" : { "type" : "boolean" },
+                "validFrom" : { "type" : "string" },
+                "supplementary" : { "type" : "boolean" },
+                "statusCode" : { "type" : "integer" },
+                "cardTypeDesc" : { "type" : "string" },
+                "depName" : { "type" : "string" },
+                "cardLabel" : { "type" : "string" },
+                "photo" : { "type" : "string" },
+                "paySystem" : { "type" : "string" },
+                "active" : { "type" : "boolean" },
+                "archive" : { "type" : "boolean" },
+                "express" : { "type" : "boolean" },
+                "virtual" : { "type" : "boolean" },
+                "schoolFood" : { "type" : "boolean" },
+                "accountCode" : { "type" : "string" },
+                "ignorable" : { "type" : "boolean" },
+                "electron" : { "type" : "boolean" },
+                "maestro" : { "type" : "boolean" },
+                "embossedName" : { "type" : "string" },
+                "validThruMonth" : { "type" : "string" },
+                "validThruYear" : { "type" : "string" },
+                "masterCard" : { "type" : "boolean" },
+                "pinChangeNeeded" : { "type" : "boolean" },
+                "pinChangePossible" : { "type" : "boolean" },
+                "pinChangeInProgress" : { "type" : "boolean" },
+                "visible" : { "type" : "boolean" },
+                "visa" : { "type" : "boolean" },
+                "mir" : { "type" : "boolean" },
+                "id" : { "type" : "integer" },
+                "number" : { "type" : "string" },
+                "dateOfExpire" : { "type" : "string" },
+                "type_old" : { "type" : "string" },
+                "statusDesc" : { "type" : "string" },
+                "type" : { "type" : "string" },
+                "airBonus" : { "type" : "boolean" },
+                "typeId" : { "type" : "integer" }
               },
               "required" : [ "expired", "validFrom", "supplementary", "statusCode", "cardTypeDesc", "depName", "photo", "paySystem", "active", "archive", "express", "virtual", "schoolFood", "accountCode", "ignorable", "electron", "maestro", "embossedName", "validThruMonth", "validThruYear", "masterCard", "pinChangeNeeded", "pinChangePossible", "pinChangeInProgress", "visible", "visa", "mir", "id", "number", "dateOfExpire", "type_old", "statusDesc", "type", "airBonus" ],
               "additionalProperties" : false
@@ -238,17 +102,11 @@
       "items" : {
         "type" : "object",
         "properties" : {
-          "reasonType" : {
-            "type" : "integer"
-          },
-          "reasonName" : {
-            "type" : "string"
-          },
+          "reasonType" : { "type" : "integer" },
+          "reasonName" : { "type" : "string" },
           "listOfAttaches" : {
             "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
+            "items" : { "type" : "string" }
           }
         },
         "required" : [ "reasonType", "reasonName", "listOfAttaches" ],

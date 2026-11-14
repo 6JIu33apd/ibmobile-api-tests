@@ -1,138 +1,51 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "properties": {
-    "responseCode": {
-      "type": "integer",
-      "enum": [1]
-    },
-    "secureCheck": {
-      "type": "object",
-      "properties": {
-        "errorExist": {
-          "type": "boolean",
-          "enum": [false]
-        }
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "responseCode" : { "type" : "integer", "enum" : [ 1 ] },
+    "secureCheck" : {
+      "type" : "object",
+      "properties" : {
+        "errorExist" : { "type" : "boolean", "enum" : [ false ] }
       },
-      "required": [
-        "errorExist"
-      ],
-      "additionalProperties": false
+      "required" : [ "errorExist" ],
+      "additionalProperties" : false
     },
-    "doc": {
-      "type": "object",
-      "properties": {
-        "docId": {
-          "type": "integer"
-        },
-        "docDatBnk": {
-          "type": "string"
-        },
-        "commDeb": {
-          "type": "number"
-        },
-        "accDeb": {
-          "type": "string"
-        },
-        "accCred": {
-          "type": "string"
-        },
-        "amountDeb": {
-          "type": "number"
-        },
-        "curr": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "number"
-        },
-        "totalAmount": {
-          "type": "number"
-        },
-        "totalAmountDeb": {
-          "type": "number"
-        },
-        "totalAmountCurr": {
-          "type": "string"
-        },
-        "commDebExist": {
-          "type": "boolean"
-        },
-        "srcId": {
-          "type": "integer"
-        },
-        "srcType": {
-          "type": "string"
-        },
-        "docTypeDesc": {
-          "type": "string"
-        },
-        "docStatusDesc": {
-          "type": "string"
-        },
-        "ibDocStatusDesc": {
-          "type": "string"
-        },
-        "docType": {
-          "type": "string",
-          "enum": ["ib_our_acc_transfer"]
-        },
-        "docStatus": {
-          "type": "string"
-        },
-        "availableForPrinting": {
-          "type": "string"
-        }
+    "doc" : {
+      "type" : "object",
+      "properties" : {
+        "docId" : { "type" : "integer" },
+        "docDatBnk" : { "type" : "string" },
+        "commDeb" : { "type" : "number" },
+        "accDeb" : { "type" : "string" },
+        "accCred" : { "type" : "string" },
+        "amountDeb" : { "type" : "number" },
+        "curr" : { "type" : "string" },
+        "amount" : { "type" : "number" },
+        "totalAmount" : { "type" : "number" },
+        "totalAmountDeb" : { "type" : "number" },
+        "totalAmountCurr" : { "type" : "string" },
+        "commDebExist" : { "type" : "boolean" },
+        "srcId" : { "type" : "integer" },
+        "srcType" : { "type" : "string" },
+        "docTypeDesc" : { "type" : "string" },
+        "docStatusDesc" : { "type" : "string" },
+        "ibDocStatusDesc" : { "type" : "string" },
+        "docType" : { "type" : "string", "enum" : [ "ib_our_acc_transfer" ] },
+        "docStatus" : { "type" : "string" },
+        "availableForPrinting" : { "type" : "string" }
       },
-      "required": [
-        "docId",
-        "docDatBnk",
-        "accDeb",
-        "accCred",
-        "amountDeb",
-        "curr",
-        "amount",
-        "totalAmount",
-        "totalAmountDeb",
-        "totalAmountCurr",
-        "commDebExist",
-        "srcId",
-        "srcType",
-        "docTypeDesc",
-        "docStatusDesc",
-        "ibDocStatusDesc",
-        "docType",
-        "docStatus",
-        "availableForPrinting"
-      ],
-      "additionalProperties": false
+      "required" : [ "docId", "docDatBnk", "accDeb", "accCred", "amountDeb", "curr", "amount", "totalAmount", "totalAmountDeb", "totalAmountCurr", "commDebExist", "srcId", "srcType", "docTypeDesc", "docStatusDesc", "ibDocStatusDesc", "docType", "docStatus", "availableForPrinting" ],
+      "additionalProperties" : false
     },
-    "checkResult": {
-      "type": "array",
-      "items": {
-        "$ref": "../../errors/check_failed.json#/properties/checkResult/items"
-      }
+    "checkResult" : {
+      "type" : "array",
+      "items" : { "$ref" : "../../errors/check_failed.json#/properties/checkResult/items" }
     },
-    "checkSuccess": {
-      "type": "boolean",
-      "enum": [true]
-    },
-    "resultCode": {
-      "type": "string",
-      "enum": ["SUCCESS"]
-    },
-    "resultMessage": {
-      "type": "string"
-    }
+    "checkSuccess" : { "type" : "boolean", "enum" : [ true ] },
+    "resultCode" : { "type" : "string", "enum" : [ "SUCCESS" ] },
+    "resultMessage" : { "type" : "string" }
   },
-  "required": [
-    "responseCode",
-    "secureCheck",
-    "doc",
-    "checkResult",
-    "checkSuccess",
-    "resultCode",
-    "resultMessage"
-  ],
-  "additionalProperties": false
+  "required" : [ "responseCode", "secureCheck", "doc", "checkResult", "checkSuccess", "resultCode", "resultMessage" ],
+  "additionalProperties" : false
 }

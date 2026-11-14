@@ -1,138 +1,110 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.response.Response;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.qameta.allure.Epic;
-import io.qameta.allure.Feature;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import io.qameta.allure.*;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.*;
 import ru.avangard.qa.ibmobile.api.DocType;
-import ru.avangard.qa.ibmobile.api.Request;
-import ru.avangard.qa.ibmobile.core.AuthMethod;
-import ru.avangard.qa.ibmobile.core.BaseTest;
-import ru.avangard.qa.ibmobile.core.DocContent;
-import ru.avangard.qa.ibmobile.core.Negative;
+import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
+import static io.restassured.RestAssured.given;
+import static io.restassured.http.ContentType.MULTIPART;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
-import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
-import static ru.avangard.qa.ibmobile.api.Endpoint.PRIOR_INFO;
-import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_DOC;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
+import static ru.avangard.qa.ibmobile.api.Endpoint.*;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
+import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
 
-/**
- * Заявление о несогласии с операцией по карте: карта — из prior_info, операция — из шаблона doc_content.
- * Подготовленный документ бэк хранит общим для всех ticket логина: документы идут по одному.
- */
 @ResourceLock("prepared_doc")
 @Epic(Section.STATEMENTS)
 @Feature("Заявление о несогласии с операцией по карте")
 class IbCardChargebackStatementTest extends BaseTest {
-
     private static final DocType DOC_TYPE = DocType.IB_CARD_CHARGEBACK_STATEMENT;
     private static final String FILE = "image.png";
 
-    /** reasonType — причина из chargebackReasons prior_info; у каждой свой список документов. */
-    static Stream<Arguments> reasons() {
-        return Stream.of(
-                argumentSet("не согласен с суммой списания", 1),
-                argumentSet("не совершал операцию", 2),
-                argumentSet("сумма списана дважды", 3),
-                argumentSet("возврат товара не зачислен", 4),
-                argumentSet("товар не доставлен или услуга не оказана", 5),
-                argumentSet("оплачено другим способом", 6),
-                argumentSet("иное", 7));
-    }
+    static final Arguments[] CHARGEBACK_REASONS = {
+        argumentSet("не согласен с суммой списания", 1),
+        argumentSet("не совершал операцию", 2),
+        argumentSet("сумма списана дважды", 3),
+        argumentSet("возврат товара не зачислен", 4),
+        argumentSet("товар не доставлен или услуга не оказана", 5),
+        argumentSet("оплачено другим способом", 6),
+        argumentSet("иное", 7)
+    };
 
-    @DisplayName("Заявление о несогласии с операцией по карте")
-    @ParameterizedTest(name = "({argumentSetName})")
-    @MethodSource("reasons")
+    @ParameterizedTest(name = "Заявление о несогласии с операцией по карте ({argumentSetName})")
+    @FieldSource("CHARGEBACK_REASONS")
     void statement(int reasonType) {
-        var docContent = docContent().put("reasonType", reasonType);
-        var opersList = docContent.withArray("opersList").valueStream().map(oper -> oper.asLong()).toList();
-        var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent, FILE)
-                .post().success().matchesSchema(DOC_TYPE);
+        ObjectNode docContent = docContent().put("reasonType", reasonType);
+        List<Long> opersList = docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList();
+        RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+        DocContent.attach(request, docContent, FILE);
+        Response prepared = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
+        success(prepared);
+        matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
         assertThat(prepared.<Number>path("doc.cardId").longValue()).as("карта").isEqualTo(docContent.get("cardId").asLong());
         assertThat(prepared.<Integer>path("doc.reasonType")).as("причина").isEqualTo(reasonType);
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").containsExactly(FILE);
         assertThat(prepared.<List<Number>>path("doc.opersList")).as("операции").extracting(Number::longValue).containsExactlyElementsOf(opersList);
-        var sent = Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.SCRETCH.secure(session(), prepared))
-                .post().success().matchesSchema(DOC_TYPE);
-        assertThat(sent.<Number>path("doc.cardId").longValue()).as("карта").isEqualTo(docContent.get("cardId").asLong());
-        assertThat(sent.<Integer>path("doc.reasonType")).as("причина").isEqualTo(reasonType);
-        assertThat(sent.<String>path("doc.description")).as("описание").isEqualTo(docContent.get("description").asText());
-        assertThat(sent.<List<String>>path("doc.attachmentsList.filename")).as("вложения").containsExactly(FILE);
-        assertThat(sent.<List<Number>>path("doc.opersList")).as("операции").extracting(Number::longValue)
-                .containsExactlyElementsOf(Stream.concat(opersList.stream(), opersList.stream()).toList());
+        success(Confirm.send("SMSPWD", session(), prepared));
     }
 
-    @Nested
-    @Negative
+    @Nested @Negative
     class Negatives {
+        static final Arguments[] REJECTIONS = {
+            argumentSet("пустое описание", "description", "", "all", "Заполните description", new String[]{FILE}),
+            argumentSet("без описания", "description", null, "all", "Заполните description", new String[]{FILE}),
+            argumentSet("без карты", "cardId", null, "all", "Заполните cardId", new String[]{FILE}),
+            argumentSet("пустой список операций", "opersList", List.of(), "all", "Укажите хотя бы одну операцию", new String[]{FILE}),
+            argumentSet("без списка операций", "opersList", null, "all", "Укажите хотя бы одну операцию", new String[]{FILE}),
+            argumentSet("без вложения", "attachmentsList", List.of(), "all", "Прикрепление документов обязательно", new String[0]),
+            argumentSet("вложение без файла", "attachmentsList", List.of(Map.of("filename", FILE, "contentType", "image/png")),
+                "lobFile", "Ошибка обработки файла-вложения", new String[0])
+        };
 
-        /** Поле заявления по умолчанию (с вложением) → значение (null — без поля), поле-виновник и сообщение отказа. */
-        static Stream<Arguments> rejections() {
-            return Stream.of(
-                    argumentSet("пустое описание", "description", "", "all", "Заполните description"),
-                    argumentSet("без описания", "description", null, "all", "Заполните description"),
-                    argumentSet("без карты", "cardId", null, "all", "Заполните cardId"),
-                    argumentSet("пустой список операций", "opersList", List.of(), "all", "Укажите хотя бы одну операцию"),
-                    argumentSet("без списка операций", "opersList", null, "all", "Укажите хотя бы одну операцию"));
+        @ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")
+        @FieldSource("REJECTIONS")
+        void rejection(String field, Object value, String badItem, String errorMessage, String[] files) {
+            ObjectNode docContent = DocContent.set(docContent(), field, value);
+            RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+            DocContent.attach(request, docContent, files);
+            rejected(request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString())
+                    .post(PREPARE_DOC.path()), badItem, errorMessage);
         }
 
-        @DisplayName("Заявление отклоняется проверками")
-        @ParameterizedTest(name = "({argumentSetName})")
-        @MethodSource("rejections")
-        void rejection(String field, Object value, String badItem, String errorMessage) {
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), field, value), FILE)
-                    .post().rejected(badItem, errorMessage);
-        }
-
-        @DisplayName("Заявление без вложения отклоняется")
-        @Test
-        void withoutAttachment() {
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent())
-                    .post().rejected("all", "Прикрепление документов обязательно");
-        }
-
-        @DisplayName("Вложение без файла отклоняется")
-        @Test
-        void attachmentWithoutFile() {
-            var attachmentsList = List.of(Map.of("filename", FILE, "contentType", "image/png"));
-            Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), "attachmentsList", attachmentsList))
-                    .post().rejected("lobFile", "Ошибка обработки файла-вложения");
-        }
-
-        /** Сейчас бэк отвечает errorCode 2 — тест падает как ошибка сервера. */
         @DisplayName("Заявление по несуществующей операции отклоняется")
         @Test
         void unknownOperation() {
-            var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), "opersList", List.of(1)), FILE).post();
-            assertThat(prepared.<String>path("resultCode")).as("отказ проверок").isEqualTo("FAILED");
+            ObjectNode docContent = DocContent.set(docContent(), "opersList", List.of(1));
+            RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+            DocContent.attach(request, docContent, FILE);
+            assertThat(request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString())
+                    .post(PREPARE_DOC.path()).<String>path("resultCode")).as("отказ проверок").isEqualTo("FAILED");
         }
 
         @DisplayName("Подготовка без ticket отклоняется")
         @Test
         void withoutTicket() {
-            Request.to(PREPARE_DOC).doc(DOC_TYPE, docContent(), FILE).post().error(AUTHORIZATION_REQUIRED);
+            ObjectNode docContent = docContent();
+            RequestSpecification request = given().contentType(MULTIPART);
+            DocContent.attach(request, docContent, FILE);
+            error(request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
         }
     }
 
-    /** Заявление по умолчанию: первая карта из prior_info, операция и причина — из шаблона. */
     private ObjectNode docContent() {
-        List<Number> cardIds = Request.to(PRIOR_INFO).as(session()).param("doc_type", DOC_TYPE).post().success()
-                .path("accountList.cards.flatten().id");
-        assumeFalse(cardIds.isEmpty(), "Нет карты для заявления о несогласии с операцией");
-        return DocContent.of(DOC_TYPE).put("cardId", cardIds.getFirst().longValue()).put("description", "Заявление автотеста о несогласии с операцией");
+        context.put("priorInfo." + DOC_TYPE,
+                success(given().formParam("ticket", session().ticket).formParam("doc_type", DOC_TYPE.toString()).post(PRIOR_INFO.path())));
+        Number cardId = context.find("priorInfo." + DOC_TYPE, "accountList.cards.flatten().id[0]");
+        return DocContent.load(DOC_TYPE).put("cardId", cardId.longValue()).put("description", "Заявление автотеста о несогласии с операцией");
     }
 }

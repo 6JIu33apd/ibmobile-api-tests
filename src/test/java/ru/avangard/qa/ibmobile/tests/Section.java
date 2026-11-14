@@ -1,8 +1,7 @@
 package ru.avangard.qa.ibmobile.tests;
 
-/** Группы функций приложения — верхний уровень (@Epic) в Allure. */
+/** Группы функций приложения для @Epic тестовых классов — верхний уровень отчёта Allure. */
 public final class Section {
-
     public static final String AUTH = "Авторизация";
     public static final String ACCOUNTS = "Счета";
     public static final String PAYMENTS = "Платежи";
@@ -14,9 +13,8 @@ public final class Section {
     public static final String CERTIFICATES = "Справки";
     public static final String LIMITS = "Лимиты";
     public static final String SETTINGS = "Настройки";
-    /** Ручки, которые вспомогательно вызываются во время тестов для получения данных. */
+    /** Справочные ручки: данные для заполнения документов и других запросов. */
     public static final String REFS = "Справочники";
 
-    private Section() {
-    }
+    private Section() {}
 }

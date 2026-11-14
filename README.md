@@ -4,7 +4,7 @@
 Стек: Java 25, Maven, JUnit 6, Rest Assured 6, Allure 3, AssertJ, Jackson.
 
 Что проверяем:
-- **контракт** — каждый ответ сверяется со строгой JSON-схемой (лишнее поле — ошибка);
+- **контракт** — ответы ручек сверяются со строгими JSON-схемами (лишнее поле — ошибка);
 - **бизнес-логику** — ключевые значения ответа и бизнес-отказы проверок с точным текстом;
 - **ошибки сервера** — HTTP не 200 или недопустимый errorCode роняет любой тест.
 
@@ -13,22 +13,24 @@
 ## Быстрый старт
 
 1. JDK 25. Maven ставить не нужно — в репозитории есть `mvnw`.
-2. Файл `~/.ibmobile/secrets.properties` (вне репозитория, в git не попадает):
+2. Файл `~/.ibmobile/dev.properties` (для других контуров — `preprod.properties` и `prod.properties`, всё вне репозитория):
 
 ```properties
-# <env>.<профиль>.login / .password, <env>.db.user / .password
-dev.MAIN.login=...
-dev.MAIN.password=...
-#test.MAIN.login=
-#test.db.user=
+baseurl=http://www.avangard.ru/ibMobile_develop/REST
+release=3.20
+login=...
+loginextra=...
+password=...
+sms=...
+scretch=...
 ```
 
 3. Запуск:
 
 ```
-mvnw test                            # тесты dev (без @OnTest / @OnProd)
+mvnw test                            # тесты dev (без @PreProd / @Prod)
 mvnw test -Dtest=AccListTest         # один класс
-mvnw test -Pall-envs                 # ещё и тесты test и prod, каждый на своём контуре
+mvnw test -Pall-envs                 # ещё и тесты preprod и prod, каждый на своём контуре
 mvnw test -Pall-envs -Dgroups=prod   # только тесты prod
 mvnw allure:serve                    # отчёт
 ```
@@ -37,33 +39,33 @@ mvnw allure:serve                    # отчёт
 
 ## Контуры
 
-Контур задаётся у теста, а не у прогона: по умолчанию dev, `@OnTest` / `@OnProd` на методе или классе — test / prod.
-Тест идёт туда, где стоит версия с нужной задачей.
+Контур задаётся у теста, а не у прогона: по умолчанию dev, `@PreProd` / `@Prod` на методе или классе — preprod / prod.
+Тест запускается на контуре с нужной версией.
+Аннотации вложены в `BaseTest`; для аннотации на классе нужен импорт `BaseTest.PreProd` или `BaseTest.Prod`.
+Выбор делает `BaseTest` перед кейсом; в `Config` контура по умолчанию нет. Для вызовов API вне `BaseTest` сначала нужен `Config.setEnv(...)`.
 
 | Контур | Аннотация | Логины | Параллельно |
 |---|---|---|---|
 | dev | — | тестовые, мультисессия | 2 потока (`junit-platform.properties`) |
-| test | `@OnTest` | только свой логин, одна сессия | по одному (`@ResourceLock("test")`) |
-| prod | `@OnProd` | только свой логин, одна сессия | по одному (`@ResourceLock("prod")`) |
+| preprod | `@PreProd` | только свой логин, одна сессия | по одному (`@ResourceLock("preprod")`) |
+| prod | `@Prod` | только свой логин, одна сессия | по одному (`@ResourceLock("prod")`) |
 
-`@OnTest` / `@OnProd` — ещё и теги `test` / `prod`. В pom по умолчанию `excludedGroups=test,prod`: обычный прогон
-(и будущий CI) не трогает test и prod; профиль `-Pall-envs` снимает фильтр.
+`@PreProd` / `@Prod` — ещё и теги `preprod` / `prod`. В pom по умолчанию `excludedGroups=preprod,prod`: обычный прогон
+(и будущий CI) не трогает preprod и prod; профиль `-Pall-envs` снимает фильтр.
 
 ## Структура
 
 ```
 src/test/java/ru/avangard/qa/ibmobile/
-  config/   Config, Profile                   откуда берутся настройки контура, логины
-  api/      Endpoint, DocType, Request,       ручки, типы документов, запрос, проверки ответа,
-            ApiResponse, ErrorCode, Session    допустимые ошибки, сессия (логин/логаут)
-  core/     BaseTest, Login, OnTest, OnProd,   база тестов, профиль и контур теста, негативные кейсы,
-            Negative, DocContent, AuthMethod,  тело и подтверждение документов, чтение БД
-            Db
-  data/     <Ручка>Data                        ответы ручек как данные для других тестов
+  config/   Config                            настройки контура и логины
+  api/      Endpoint, DocType, HttpFilter,    ручки, типы документов, транспорт, проверки ответа,
+            ResponseChecks, ErrorCode           допустимые ошибки
+  core/     BaseTest (Login, PreProd, Prod, Negative) база тестов и вложенные аннотации
+            Session, TestContext                сессия и ответы помощников кейса
+            DocContent, Confirm, Db             тело документа, подтверждение и чтение БД
   tests/    Section, <домен>/<Ручка>Test       тесты; Section — группы в Allure
   tools/    SchemaDraft                        черновики JSON-схем из реальных ответов
 src/test/resources/
-  env/<env>.properties                         настройки контура
   versions/<релиз>.properties                  версии ручек релиза
   schemas/<ручка>/[<doc_type>/]<версия>.json   схемы ответов
   schemas/errors/                              схемы ошибок
@@ -72,48 +74,53 @@ src/test/resources/
   junit-platform.properties                    параллельный запуск JUnit
 ```
 
-Зависимости пакетов идут в одну сторону: `config` ← `api` ← `core` ← `data` ← `tests`.
+Настройки — в `config`, протокол — в `api`, жизненный цикл теста и документы — в `core`, кейсы — в `tests`.
+`SchemaDraft` объединяет сбор образцов и генерацию черновиков схем.
 
 ## Конфиг
 
 | Где | Что |
 |---|---|
-| `env/<env>.properties` | всё о контуре: baseUrl, релиз, коды подтверждения (dev), БД (test/prod) |
+| `~/.ibmobile/<env>.properties` | baseurl, release, логины, общий пароль и коды; при необходимости — настройки БД |
 | `versions/<релиз>.properties` | версии ручек релиза |
-| `~/.ibmobile/secrets.properties` | логины, пароли профилей и БД; ключи `<env>.*` |
 
-Секреты контура теста накладываются поверх `env/<env>.properties` без префикса: `dev.MAIN.login` → `MAIN.login`.
-Пустое или пробельное значение (`db.url=`) считается незаданным: обращение к нему роняет тест с понятным сообщением.
+`Config.get("password")` читает ключ текущего контура без префиксов и преобразований.
+`Config` кэширует файлы контуров, `Endpoint` — файлы версий API по релизу. Общий `Config.load` только читает указанный источник в UTF-8.
+Каждый используемый файл загружается один раз за прогон; дополнительные логины берутся из кэша. Неиспользуемые контуры не загружаются.
+`Config.settings()` возвращает закэшированные настройки текущего контура; `Config.get` проверяет обязательное значение.
+Отсутствие файла контура — ошибка конфигурации. Старый `secrets.properties` не используется.
+Пустые и пробельные значения удаляются при загрузке; обращение к обязательному отсутствующему ключу роняет тест.
 Значения не обрезаются, чтобы сохранять значимые пробелы в паролях.
 
-`uid` в каждом запросе — рудимент протокола, бэк принимает любой; это константа в `Request`.
+`uid` в каждом запросе — рудимент протокола, бэк принимает любой; его добавляет `HttpFilter`.
 Тайм-ауты запроса — соединение 10 с, ответ 2 мин.
 
 ### Релизы и версии
 
 Пути ручек версионированы: `Auth/ticket/9.4`, `Doc/prepare_doc/8.1`. В `Endpoint` путь без версии,
-версия берётся из `versions/<release>.properties` по имени константы, `release` — из `env/<env>.properties`
+версия берётся из `versions/<release>.properties` по имени константы, `release` — из `~/.ibmobile/<env>.properties`
 контура теста. Схема ищется по той же версии: `schemas/acc_list/4.0.json`. Поэтому `release` переключает и пути,
 и схемы — у каждого контура свой релиз. Новый релиз — копия файла версий с правкой изменившихся строк, новые схемы
 для них и `release=` в файле контура.
+Значение версии включает начальный `/`: `AUTH_LOGIN=/9.4`. `Endpoint` соединяет его с путём ручки или схемы без добавочного слеша.
 
 ## Запрос и ответ
 
 ```java
-Request.to(ACC_DETAILS).as(session()).param("account", account).post()
-        .success()                     // не отказ
-        .matchesSchema()               // строгая схема ручки
-        .path("accBalanceDetails[0].account");
+Response response = given().formParam("ticket", session().ticket).formParam("account", account).post(ACC_DETAILS.path());
+success(response);
+matchesSchema(response, ACC_DETAILS.schema());
+String actualAccount = response.path("accBalanceDetails[0].account");
 ```
 
-- Запрос — объект `Request`, отправка — только его `post()` (и `delete()` для логаута).
-- Любая ручка, включая prepare_doc и send_doc, вызывается только через `Request.to(endpoint)`.
-- `uid` подставляется сам, `as(session)` добавляет `ticket` (form-параметр); кейс «без ticket» — тот же запрос без `as`.
-- `param(name, null)` убирает параметр — так в таблице кейсов пишется «без параметра».
-- Тело — URLENC; у ручек, помеченных в `Endpoint` как multipart (`prepare_doc` и немногие другие), — MULTIPART.
-- Коллекция в `param` — несколько одноимённых параметров (например, два `secure` в `send_doc`).
-- Каждый запрос — шаг Allure с телом запроса и ответа; у multipart части запроса — отдельное вложение «Параметры запроса»
-  (allure-rest-assured их не пишет): текстовые части целиком, файлы — имя, тип и размер.
+- `given`, `formParam`, `post`/`delete` — нативный Rest Assured; проверки — статические методы `ResponseChecks`.
+- `HttpFilter` подключается в `BaseTest` и вызывается Rest Assured при каждом запросе: добавляет `uid` и base URL,
+  сохраняет ответ и проверяет HTTP/errorCode. Возвращённый `Response` получает тест; `ticket` передаётся явно через `formParam`.
+- `null` в `formParam` не означает пропуск: в таблицах — `formParams(value == null ? Map.of() : Map.of(name, value))`.
+- Тело — URLENC; для multipart явно задаётся `.contentType(MULTIPART)`.
+- Коллекция в `formParam` — несколько одноимённых параметров (например, два `secure` в `send_doc`).
+- Каждый запрос — шаг Allure с телом запроса и ответа; у multipart отдельное вложение «Параметры запроса»:
+  карта «ключ=значение»; файлы описаны в `doc_content.attachmentsList`.
 - Дробные числа ответа — `BigDecimal` (Rest Assured по умолчанию читает их как `Float` с потерей точности).
 
 ### Ошибки
@@ -122,10 +129,9 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 
 | Вид | Как выглядит | Проверка |
 |---|---|---|
-| Бизнес-отказ (эталон) | `responseCode -1`, `resultCode FAILED`, `checkResult[{badItem, errorMessage}]` | `rejected(badItem, errorMessage)` + схема `errors/check_failed.json` |
-| Техническая ошибка | `errorCode` + `errorDesc` | `error(ErrorCode.X)` + схема формата ошибки |
+| Бизнес-отказ (эталон) | `responseCode -1`, `resultCode FAILED`, `checkResult[{badItem, errorMessage}]` | `rejected(response, badItem, errorMessage)` + схема `errors/check_failed.json` |
+| Техническая ошибка | `errorCode` + `errorDesc` | `error(response, ErrorCode.X)` + общая схема `errors/error.json` |
 | Ошибка сервера | HTTP не 200, `errorCode` вне `ErrorCode` (например, 2 `internal_server_error`) | роняет **любой** тест: «Ошибка сервера: …» |
-| Лимит запросов | `errorCode 403` «Превышено допустимое количество запросов…» | тест broken: «Сервер ограничил частоту запросов», перезапустить позже |
 
 Допустимые технические ошибки — только из `ErrorCode`:
 
@@ -139,159 +145,166 @@ Request.to(ACC_DETAILS).as(session()).param("account", account).post()
 ## Схемы
 
 - Строгие, JSON Schema draft-04, `additionalProperties: false`; обязательные поля в `required`, остальные — опциональные.
-- Подтверждённые значения статусов закреплены в схемах; `success()` также отсекает отказы проверок и подтверждения.
-- Прогон ручки без схемы падает и сохраняет ответ в `target/schema-samples`
-  (`-Dsamples=true` — сохранять все ответы, чтобы набрать образцы).
-- `tools.SchemaDraft` (запуск из IDEA) строит черновик в `src/test/resources/schemas`:
-  поле обязательное, если оно есть во всех образцах. Существующие схемы не перезаписываются — для пересоздания удалить файл.
-  Черновик проверить руками.
-- Схемы ошибок в `schemas/errors/` написаны руками. Общие части — `$ref` на них (путь относительно схемы):
-  `"$ref": "../../errors/check_failed.json#/properties/checkResult/items"`.
+- Подтверждённые значения статусов закреплены в схемах; `success(response)` также отсекает отказы проверок и подтверждения.
+- Один `endpoint.schema(DocType...)`: `schema()` для обычных ручек, `schema(docType)` для prepare_doc/prior_info/send_doc. `matchesSchema(response, path)` проверяет схему; отсутствие схемы роняет тест.
+- Все полученные ответы сохраняются до проверок в `.schema-samples/` (в git не попадает и переживает `mvn clean`).
+  Одинаковые ответы не дублируются. Неожиданные HTTP/ошибки и не-JSON лежат отдельно в `unexpected/` и не участвуют в генерации.
+- `tools.SchemaDraft` автоматически после завершения JUnit-прогона, включая падающий, обновляет `target/schema-drafts/schemas/`:
+  поле обязательное, если оно есть во всех накопленных образцах. Запуск `main` из IDEA также доступен.
+  Простые описания полей и списки значений записываются в одну строку; вложенность и ограничения сохраняются.
+  Черновик проверить руками и перенести в `src/test/resources/schemas`; эталоны автоматически не меняются.
+- Ручная `schemas/errors/error.json` общая для технических ошибок (`oneOf`): 1/4/1000 — только `errorCode`/`errorDesc`; 5 — ещё обязательные `resultCode=FAILED`/`resultMessage`.
+  Бизнес-отказы — ручная `check_failed.json`; общие части документов: `"$ref": "../../errors/check_failed.json#/properties/checkResult/items"`.
 
-## Сессии и профили
+## Сессии и логины
 
 Одна сессия — на один тест: одна ручка разным пользователям отдаёт разные данные.
 
 - Все классы наследуют `BaseTest`. `session()` — сессия теста: логин при первом обращении, логаут после теста.
   Тест без `session()` не логинится.
-- Профиль по умолчанию — `MAIN`. Другой — `@Login(Profile.X)` на методе теста:
-
-```java
-@Login(Profile.BLOCKED)
-@DisplayName("Деталка счёта с блокировкой")
-@Test
-void blocked() {
-    Request.to(ACC_DETAILS).as(session()).param("account", account(DEBIT)).post().success().matchesSchema();
-}
-```
-
-- Профиль — константа enum `config/Profile`, логин и пароль — в секретах `<env>.<ПРОФИЛЬ>.login/.password`.
-  Нет профиля на контуре — тест пропускается.
+- По умолчанию логин берётся из ключа `login`. `@Login("loginextra")` на методе выбирает другой ключ того же файла.
+  В аннотации указывается имя ключа, а не реальный логин; новые ключи не требуют enum или правок конфигурационного кода.
+- `password`, `sms`, `scretch` общие для всех логинов контура. Коды требуются только для выбранного способа подтверждения.
+  Нет выбранного логина — тест пропускается; отсутствие файла или другого нужного значения роняет тест.
 - Логаут — тоже через `session()`: `session().logout()`; повторный логаут после теста не выполняется.
 - Неверный пароль реальных профилей не тестируем (блокировка); негатив логина — несуществующий логин.
+- Смена логина/пароля тестируется отдельными логинами: ticket становится недействительным, исходные данные восстанавливает сам тест.
 
 ## Документы
 
-prepare_doc и send_doc — обычные ручки, вызываются как все: `Request.to(PREPARE_DOC)`, `Request.to(SEND_DOC)`.
+prepare_doc вызывается через нативный `given()`, отправка — через `Confirm.send`.
 Тип документа — константа enum `api/DocType`; в тестовом классе — `private static final DocType DOC_TYPE = DocType.X`.
 Значение `doc_type` — имя константы в нижнем регистре; по нему же ищутся шаблон и схемы документа.
-Помогают два класса: `DocContent` — тело `doc_content`, `AuthMethod` — параметр `secure` для send_doc.
+`DocContent` готовит тело и вложения, `Confirm.send` подтверждает и отправляет документ выбранным в тесте способом.
+Вызов send_doc добавляется явно в нужный позитив; отдельного контрактного класса для этой ручки пока нет.
 
 ```java
-var prepared = Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent()).post().success().matchesSchema(DOC_TYPE);
-Request.to(SEND_DOC).as(session()).param("secure", AuthMethod.NONE.secure(session(), prepared))
-        .post().success().matchesSchema(DOC_TYPE);
+Response prepared = given().contentType(MULTIPART).formParam("ticket", session().ticket)
+        .formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent().toString()).post(PREPARE_DOC.path());
+success(prepared);
+matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
+success(Confirm.send("NONE", session(), prepared));
 ```
 
-| `AuthMethod` | Что делает `secure(session, prepared)` |
+| Способ | Подтверждение перед send_doc в `Confirm.send(method, session, prepared)` |
 |---|---|
 | `NONE` | `secure` с токеном `noneAuthInit.code` |
-| `SMSPWD` | `send_confirm_sms`, затем два `secure`: код SMS и пароль. Код на dev — из `env/dev.properties`, на test/prod — из БД |
-| `SCRETCH` | `show_scretch`, затем код из `env/dev.properties` (только dev) |
+| `SMSPWD` | `check_password/1.1` с паролем входа → `send_confirm_sms/1.1` → два `secure`: SMS с кодом `sms`, PWD с паролем |
+| `SCRETCH` | `show_scretch`, затем `secure` с кодом `scretch` |
 
-- Способ задаётся в кейсе заранее; `secure` запрашивает код только для него и проверяет, что он есть в `authMethods`.
-- Суммы — только `BigDecimal` (`ApiResponse.decimal`): double даёт `1.5699999999999998`.
-  Суммы позитивных кейсов случайные (1.01–9.99), чтобы не ловить отказ-дубль.
+- Способ задаётся в кейсе строкой `"NONE"`, `"SMSPWD"` или `"SCRETCH"`; `Confirm.send` возвращает ответ send_doc.
+  `Session` отвечает за вход, ticket и логаут.
+  Токены — JSON-строки, повторные `secure` кодирует Rest Assured.
+- Коды читаются из файла текущего контура только для выбранного способа; `NONE` их не требует.
+- Суммы — только `BigDecimal`: `response.jsonPath().getObject("doc.amount", BigDecimal.class)`; double даёт `1.5699999999999998`.
 
 ### doc_content и параметризация кейсов
 
-`DocContent.of(DOC_TYPE)` — шаблон тела из `doc_content/<doc_type>.json` (копия из Postman) как Jackson `ObjectNode`.
+`DocContent.load(DOC_TYPE)` читает тело из `doc_content/<doc_type>.json` (копия из Postman) как Jackson `ObjectNode`.
+В multipart `doc_content` передаётся строкой через `.toString()`: Rest Assured не сериализует ObjectNode с этим Content-Type.
 В тестовом классе есть валидный вариант по умолчанию, кейс меняет в нём поля. JSON на каждый кейс не нужен.
 
 ```java
 private static ObjectNode docContent() {
-    return DocContent.of(DOC_TYPE).put("text", TEXT);
+    return DocContent.load(DOC_TYPE).put("text", TEXT);
 }
 ```
 
-Кейсы, которые меняют одно поле, — строки таблицы `@MethodSource`: `argumentSet(имя кейса, аргументы...)`.
+Статические параметры — таблица `Arguments[]` в самом тестовом классе и `@FieldSource`:
+`argumentSet(имя кейса, аргументы...)`. Для вычисляемых параметров можно использовать обычный `@MethodSource`.
 `DocContent.set(docContent, путь, значение)` меняет поле, `null` — убирает его; значение — строка, число, список или Map.
 Путь — через точку на любую глубину, индекс массива — число: `"amount"`, `"payer.address.city"`, `"attachmentsList.0.filename"`.
-Поле должно существовать: опечатка в пути роняет тест. Списки и Map остаются JSON-деревом, доступным по вложенным путям.
+Списки и Map остаются JSON-деревом, доступным по вложенным путям.
 
 ```java
-static Stream<Arguments> rejections() {
-    return Stream.of(
-            argumentSet("пустой текст", "text", "", "text", "Заполните текст заявления"),
-            argumentSet("без текста", "text", null, "text", "Заполните текст"));
-}
+static final Arguments[] REJECTIONS = {
+    argumentSet("пустой текст", "text", "", "text", "Заполните текст заявления"),
+    argumentSet("без текста", "text", null, "text", "Заполните текст")
+};
 
-@DisplayName("Заявление отклоняется проверками")
-@ParameterizedTest(name = "({argumentSetName})")
-@MethodSource("rejections")
+@ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")
+@FieldSource("REJECTIONS")
 void rejection(String field, Object value, String badItem, String errorMessage) {
-    Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, DocContent.set(docContent(), field, value))
-            .post().rejected(badItem, errorMessage);
+    Response response = given().contentType(MULTIPART).formParam("ticket", session().ticket).formParam("doc_type", DOC_TYPE.toString())
+            .formParam("doc_content", DocContent.set(docContent(), field, value).toString()).post(PREPARE_DOC.path());
+    rejected(response, badItem, errorMessage);
 }
 ```
 
-Кейс со сложной логикой (несколько полей, свои проверки) — отдельный метод.
+Кейс со сложной логикой (несколько полей, свои проверки) — отдельный метод. Для простых URLENC-ручек достаточно явных параметров;
+отдельные шаблоны с парой полей не нужны. Шаблоном ответа служит JSON Schema, эталонный JSON не хранится.
 
-Вложения — файлы из `files/` последними аргументами `doc`: они уходят частями `file` и сами попадают в `attachmentsList`
-(тип — по расширению; неизвестное расширение роняет тест):
+`DocContent.attach` до отправки добавляет в нативный запрос файлы из classpath `files/` и заполняет `attachmentsList`.
+Без файлов исходное описание сохраняется; транспорт не меняет содержимое документа:
 
 ```java
-Request.to(PREPARE_DOC).as(session()).doc(DOC_TYPE, docContent(), "image.png").post().success();
+ObjectNode docContent = docContent();
+RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+DocContent.attach(request, docContent, "image.png");
+Response response = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
+success(response);
 ```
 
-Схема документа — вариант схемы ручки: `matchesSchema(DOC_TYPE)` → `schemas/prepare_doc/<doc_type>/8.1.json`.
+Схема документа — вариант схемы ручки: `matchesSchema(response, PREPARE_DOC.schema(DOC_TYPE))` → `schemas/prepare_doc/<doc_type>/8.1.json`.
 
 ## Данные из других ручек
 
 Тестовые данные (номера счетов и т. п.) берутся из ответов других ручек, а не хранятся в репозитории.
-Класс `data/<Ручка>Data` хранит ответ ручки **целиком**. Данные у каждого пользователя свои, поэтому
-объект создаётся в тесте из его сессии:
+`TestContext` хранит готовые `JsonPath` по имени на один кейс; `put` сохраняет или заменяет ответ.
+Запрос помощника и проверка его успеха задаются в тесте:
 
 ```java
-var accList = new AccListData(session());
-accList.codes("it.cardAcc && !it.isCredit && it.currency == 'RUR'");  // номера счетов по условию
-accList.field(account, "currency");                                 // поле счёта по номеру
-accList.path("accounts.account.code");                              // любое поле ответа — по пути
+context.put("accList", success(given().formParam("ticket", session().ticket).post(ACC_LIST.path())));
+String account = context.find("accList", "accounts.account.findAll { it.cardAcc && !it.isCredit }.sort { -it.otb }[0]?.code");
+List<?> accounts = context.get("accList").get("accounts.account");
 ```
 
-Какой счёт, карта или валюта нужны, решает тест: условие — GPath (Groovy) по полям счёта из ответа,
-в таблице кейсов — строкой. `codes` сортирует от большего `otb` к меньшему (со счёта в начале есть что списать),
-нет подходящих — кейс пропускается, поле условия, которого нет у счетов (опечатка), роняет тест.
-В классе `Data` — только то, что нужно многим тестам; не модель предметной области.
+Выборка — полный GPath (Groovy) из теста: условия, сортировка и нужное поле.
+`find(name, path)` пропускает кейс при `null`; `get(name).get(path)` позволяет обработать `null` в тесте.
+Отсутствие сохранённого ответа и ошибки выполнения GPath роняют тест.
+
+Контекст принадлежит экземпляру теста (JUnit `PER_METHOD`); разные параметры — разные имена. `HttpFilter` проверяет HTTP/errorCode,
+успех помощника — явный `success(...)` в тесте; схема — только у целевой ручки. Отдельных классов данных и общих таблиц кейсов нет.
 
 ## Отчёт Allure
 
 - `@Epic` — группа функций из `tests/Section` (Счета, Платежи, Заявления, Аэроэкспресс, Настройки…).
 - `@Feature` — ручка или документ.
 - Story «Негативные» — негативные кейсы внутри фичи: вложенный класс `@Nested @Negative class Negatives`.
-- Имя кейса — `@DisplayName` метода + имя строки таблицы (`{argumentSetName}`) или значение (`{0}`).
+- Имя кейса — русское имя JUnit: `@DisplayName` либо `name` у `@ParameterizedTest` с `{argumentSetName}` / `{0}`.
 - Результаты прошлых прогонов очищаются перед каждым запуском.
 
 ## Тестовый класс
 
-Все классы устроены одинаково — информационная ручка или документ. Каждый кейс читается одинаково:
-`Request.to(...)` с данными по умолчанию, `.as(session())`, изменение кейса (`.param(...)` или `DocContent.set(...)`),
-`.post()`, проверки. В классе — только данные по умолчанию, обёрток над запросом нет.
+Все классы устроены одинаково: нативный `given()`, явные параметры, `.post(endpoint.path())`, затем отдельные проверки ответа.
+В классе — данные по умолчанию и кейсы, обёрток над запросом нет.
+У `prepare_doc` — класс на `doc_type`; send_doc используется только как вспомогательный запрос для отправки документа.
+`AuthTicketTest` объединяет связанные контракты логина и логаута.
 
 | Порядок | Что | Ручка (`AccDetailsTest`) | Документ (`IbOurAccTransferTest`) |
 |---|---|---|---|
-| 1 | позитивные кейсы | `details(type)` | `transfer(accDebType, authMethod)` |
-| 2 | `@Nested @Negative class Negatives`, в нём — таблица `invalidParameters` → `error(INVALID_PARAMETERS)` | параметр запроса → значение | поле документа → значение |
-| 3 | таблица `rejections` → `rejected(badItem, errorMessage)` | — | поле документа → значение |
+| 1 | позитивные кейсы | `details(condition)` | `transfer(accDebCondition, authMethod)` |
+| 2 | `@Nested @Negative class Negatives`, в нём — таблица `invalidParameters` → `error(response, INVALID_PARAMETERS)` | параметр запроса → значение | поле документа → значение |
+| 3 | таблица `rejections` → `rejected(response, badItem, errorMessage)` | — | поле документа → значение |
 | 4 | особые кейсы — отдельные методы | — | `sameAccount()` |
-| 5 | `withoutTicket`: тот же запрос без `.as(session())` → `error(AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
-| 6 | данные по умолчанию — приватные методы внизу внешнего класса | `account(type)` | `docContent()` |
+| 5 | `withoutTicket`: запрос без `formParam("ticket", ...)` → `error(response, AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
+| 6 | данные по умолчанию | условие выбора счёта | `docContent(condition)` |
 
 Кейс таблицы меняет одно значение в валидном запросе, `null` — убирает его:
-у ручки — `.param(name, value)`, у документа — `DocContent.set(docContent, field, value)`.
+у ручки — `.formParams(value == null ? Map.of() : Map.of(name, value))`, у документа — `DocContent.set(docContent, field, value)`.
 Имена — как у бэка: `docType`, `docContent`, `authMethod`, `accDeb`, `badItem`, `errorMessage`; без сокращений.
 
 ## Новая ручка
 
-1. Константа в `api/Endpoint` (путь без версии, название для отчёта, `true` — MULTIPART) и версия в `versions/*.properties`.
+1. Константа в `api/Endpoint` (путь без версии) и версия в `versions/*.properties`.
 2. Класс `tests/<домен>/<Ручка>Test extends BaseTest` с `@Epic` и `@Feature`. Кейсы — параметры.
-3. Позитивные кейсы: `success()`, `matchesSchema()`, проверка ключевых значений.
+3. Позитивные кейсы: `success(response)`, `matchesSchema(response, endpoint.schema())` (для документа — `schema(DOC_TYPE)`), проверка ключевых значений.
 4. Негативные кейсы — обязательно, во вложенном `@Nested @Negative class Negatives`: бизнес-отказы `rejected(...)`,
    технические `error(...)`. Аннотация даёт Story «Негативные» всем его тестам.
 5. Документы — константа в `api/DocType`, шаблон `doc_content/<doc_type>.json`, в классе `DOC_TYPE`
    и `@ResourceLock("prepared_doc")` на классе.
-6. Прогнать: без схемы тест упадёт и сохранит ответ → `tools.SchemaDraft` → проверить схему → прогнать снова.
-7. Не dev — `@OnTest` / `@OnProd`; на prod только то, что безопасно под своим логином.
+6. Прогнать: без схемы тест упадёт; образцы и черновик появятся автоматически → проверить и утвердить схему → прогнать снова.
+7. Не dev — `@PreProd` / `@Prod`; на prod только то, что безопасно под своим логином.
 
 ```java
 @Epic(Section.ACCOUNTS)
@@ -301,8 +314,10 @@ class AccListTest extends BaseTest {
     @DisplayName("Счета клиента с уникальными 20-значными номерами")
     @Test
     void accList() {
-        List<String> codes = Request.to(ACC_LIST).as(session()).post().success().matchesSchema().path("accounts.account.code");
-        assertThat(codes).isNotEmpty().doesNotHaveDuplicates();
+        Response response = given().formParam("ticket", session().ticket).post(ACC_LIST.path());
+        success(response);
+        matchesSchema(response, ACC_LIST.schema());
+        assertThat(response.<List<String>>path("accounts.account.code")).isNotEmpty().doesNotHaveDuplicates();
     }
 
     @Nested
@@ -312,7 +327,7 @@ class AccListTest extends BaseTest {
         @DisplayName("Запрос без ticket отклоняется")
         @Test
         void withoutTicket() {
-            Request.to(ACC_LIST).post().error(AUTHORIZATION_REQUIRED);
+            error(given().post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }
@@ -321,10 +336,12 @@ class AccListTest extends BaseTest {
 ## Параллельность
 
 Классы (ручки) идут параллельно в 2 потока, кейсы одного класса, включая `Negatives`, — по очереди
-(`junit-platform.properties`). Тесты test и prod — по одному на контур (`@ResourceLock` в `@OnTest` / `@OnProd`),
+(`junit-platform.properties`). Тесты preprod и prod — по одному на контур (`@ResourceLock` в `@PreProd` / `@Prod`),
 параллельно с dev. Контур — на поток теста. У каждого теста свой экземпляр класса и своя сессия.
 Классы документов — ещё и по одному между собой (`@ResourceLock("prepared_doc")`): все они вызывают prepare_doc,
 а подготовленный документ бэк хранит общим для всех ticket логина.
+
+`BaseTest` один раз задаёт общие `RestAssured.config` и фильтр в статическом блоке; base URL выбирается фильтром для каждого запроса.
 
 Тест, который меняет настройку клиента (например, лимит по счёту), возвращает её назад, даже если упал:
 иначе пропадёт образец для следующих прогонов.

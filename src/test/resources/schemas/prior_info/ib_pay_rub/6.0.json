@@ -2,20 +2,14 @@
   "$schema" : "http://json-schema.org/draft-04/schema#",
   "type" : "object",
   "properties" : {
-    "nextDocNumber" : {
-      "type" : "integer"
-    },
+    "nextDocNumber" : { "type" : "integer" },
     "otherPersonDocumentList" : {
       "type" : "array",
       "items" : {
         "type" : "object",
         "properties" : {
-          "code" : {
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          }
+          "code" : { "type" : "string" },
+          "label" : { "type" : "string" }
         },
         "required" : [ "code", "label" ],
         "additionalProperties" : false

@@ -1,46 +1,44 @@
 package ru.avangard.qa.ibmobile.tests.accounts;
 
-import io.qameta.allure.Epic;
-import io.qameta.allure.Feature;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import ru.avangard.qa.ibmobile.api.Request;
-import ru.avangard.qa.ibmobile.core.BaseTest;
-import ru.avangard.qa.ibmobile.core.Negative;
+import io.restassured.response.Response;
+import io.qameta.allure.*;
+import org.junit.jupiter.api.*;
+import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
 
 import java.util.List;
 
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
+import static ru.avangard.qa.ibmobile.api.Endpoint.*;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
+import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
 
+/** Контракт списка счетов, формат и уникальность номеров; отказы без действующего ticket. */
 @Epic(Section.ACCOUNTS)
 @Feature("Список счетов")
 class AccListTest extends BaseTest {
-
     @DisplayName("Счета клиента с уникальными 20-значными номерами")
     @Test
     void accList() {
-        List<String> codes = Request.to(ACC_LIST).as(session()).post().success().matchesSchema().path("accounts.account.code");
-        assertThat(codes).as("номера счетов").isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}"));
+        Response response = given().formParam("ticket", session().ticket).post(ACC_LIST.path());
+        success(response);
+        matchesSchema(response, ACC_LIST.schema());
+        assertThat(response.<List<String>>path("accounts.account.code")).as("номера счетов").isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}"));
     }
 
-    @Nested
-    @Negative
+    @Nested @Negative
     class Negatives {
-
         @DisplayName("Запрос без ticket отклоняется")
         @Test
         void withoutTicket() {
-            Request.to(ACC_LIST).post().error(AUTHORIZATION_REQUIRED);
+            error(given().post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
         }
 
         @DisplayName("Запрос с несуществующим ticket отклоняется")
         @Test
         void unknownTicket() {
-            Request.to(ACC_LIST).param("ticket", "invalid_ticket").post().error(AUTHORIZATION_REQUIRED);
+            error(given().formParam("ticket", "invalid_ticket").post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

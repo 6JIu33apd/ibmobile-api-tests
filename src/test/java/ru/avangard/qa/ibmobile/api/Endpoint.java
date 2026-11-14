@@ -1,53 +1,37 @@
 package ru.avangard.qa.ibmobile.api;
 
+import io.restassured.http.Method;
 import ru.avangard.qa.ibmobile.config.Config;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-import java.util.Locale;
-
-/** Ручки бэка. Версия в конце пути — из versions/&lt;релиз&gt;.properties по имени константы. */
+/** Пути и схемы; версии ручек выбираются из файла текущего релиза. */
 public enum Endpoint {
+    AUTH_LOGIN("Auth/ticket", Method.POST),
+    AUTH_LOGOUT("Auth/ticket", Method.DELETE),
+    SEND_CONFIRM_SMS("Auth/send_confirm_sms", Method.POST),
+    CHECK_PASSWORD("Auth/check_password", Method.POST),
+    SHOW_SCRETCH("Auth/show_scretch", Method.POST),
+    ACC_LIST("Statement/acc_list", Method.POST),
+    ACC_DETAILS("Statement/acc_details", Method.POST),
+    PRIOR_INFO("Doc/prior_info", Method.POST),
+    PREPARE_DOC("Doc/prepare_doc", Method.POST),
+    SEND_DOC("Doc/send_doc", Method.POST);
 
-    AUTH_LOGIN("Auth/ticket", "Логин"),
-    AUTH_LOGOUT("Auth/ticket", "Логаут"),
-    SEND_CONFIRM_SMS("Auth/send_confirm_sms", "Отправка SMS-кода"),
-    SHOW_SCRETCH("Auth/show_scretch", "Запрос кода со скретч-карты"),
-    ACC_LIST("Statement/acc_list", "Список счетов"),
-    ACC_DETAILS("Statement/acc_details", "Деталка счета"),
-    PRIOR_INFO("Doc/prior_info", "Данные для документа"),
-    PREPARE_DOC("Doc/prepare_doc", "Подготовка документа", true),
-    SEND_DOC("Doc/send_doc", "Отправка документа");
+    private static final Map<String, Properties> VERSIONS = new ConcurrentHashMap<>();
+    public final String basePath;
+    public final Method method;
 
-    private final String path;
-    private final String title;
-    /** prepare_doc и немногие другие; остальные ручки — URLENC. */
-    final boolean multipart;
+    Endpoint(String path, Method method) { this.basePath = path; this.method = method; }
 
-    Endpoint(String path, String title) {
-        this(path, title, false);
-    }
+    public String path() { return basePath + version(); }
 
-    Endpoint(String path, String title, boolean multipart) {
-        this.path = path;
-        this.title = title;
-        this.multipart = multipart;
-    }
-
-    /** Путь с версией релиза, например Auth/ticket/9.4. */
-    String path() {
-        return path + "/" + version();
-    }
-
-    /** schemas/&lt;ручка&gt;/[&lt;doc_type&gt;/]&lt;версия&gt;.json */
-    String schema(DocType docType) {
-        return "schemas/" + name().toLowerCase(Locale.ROOT) + "/" + (docType == null ? "" : docType + "/") + version() + ".json";
+    public String schema(DocType... docType) {
+        return "schemas/" + name().toLowerCase() + (docType.length == 0 ? "" : "/" + docType[0]) + version() + ".json";
     }
 
     private String version() {
-        return Config.version(name());
-    }
-
-    @Override
-    public String toString() {
-        return title;
+        return VERSIONS.computeIfAbsent(Config.get("release"), release ->
+                Config.load(Endpoint.class.getResource("/versions/" + release + ".properties").toString())).getProperty(name());
     }
 }

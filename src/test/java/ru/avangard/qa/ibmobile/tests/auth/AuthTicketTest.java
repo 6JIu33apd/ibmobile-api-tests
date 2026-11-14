@@ -1,46 +1,40 @@
 package ru.avangard.qa.ibmobile.tests.auth;
 
-import io.qameta.allure.Epic;
-import io.qameta.allure.Feature;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import ru.avangard.qa.ibmobile.api.Request;
-import ru.avangard.qa.ibmobile.core.BaseTest;
-import ru.avangard.qa.ibmobile.core.Negative;
+import io.qameta.allure.*;
+import org.junit.jupiter.api.*;
+import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
 
-import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
-import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.SESSION_EXPIRED;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.WRONG_CREDENTIALS;
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static ru.avangard.qa.ibmobile.api.Endpoint.*;
+import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
+import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
 
+/** Контракт логина и логаута; недействительность ticket после выхода проверяется через acc_list. */
 @Epic(Section.AUTH)
 @Feature("Логин и логаут")
 class AuthTicketTest extends BaseTest {
-
     @DisplayName("Логин по логину и паролю выдаёт ticket и данные клиента")
     @Test
     void login() {
-        session().loginResponse.matchesSchema();
+        matchesSchema(session().loginResponse, AUTH_LOGIN.schema());
     }
 
     @DisplayName("После логаута ticket недействителен")
     @Test
     void logout() {
-        session().logout();
-        Request.to(ACC_LIST).as(session()).post().error(SESSION_EXPIRED);
+        matchesSchema(session().logout(), AUTH_LOGOUT.schema());
+        assertThat(given().formParam("ticket", session().ticket).post(ACC_LIST.path()).<Integer>path("errorCode"))
+                .as("ticket после логаута").isEqualTo(SESSION_EXPIRED.errorCode);
     }
 
-    @Nested
-    @Negative
+    @Nested @Negative
     class Negatives {
-
-        /** Только несуществующий логин: неверный пароль реального профиля копит попытки до блокировки (5, без сброса). */
         @DisplayName("Логин несуществующего пользователя отклоняется")
         @Test
         void unknownLogin() {
-            Request.to(AUTH_LOGIN).param("login", "no_such_login_qa_000").param("password", "x").post().error(WRONG_CREDENTIALS);
+            error(given().formParam("login", "no_such_login_qa_000").formParam("password", "x").post(AUTH_LOGIN.path()), WRONG_CREDENTIALS);
         }
     }
 }

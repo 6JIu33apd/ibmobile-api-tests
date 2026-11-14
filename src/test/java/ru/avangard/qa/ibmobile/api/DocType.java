@@ -1,13 +1,7 @@
 package ru.avangard.qa.ibmobile.api;
 
-import java.util.Locale;
-
-/**
- * doc_type документов: значение — имя константы в нижнем регистре.
- * По нему же ищутся шаблон doc_content/&lt;doc_type&gt;.json и схемы schemas/&lt;ручка&gt;/&lt;doc_type&gt;/.
- */
+/** doc_type в нижнем регистре связывает запрос, шаблон doc_content и схему. */
 public enum DocType {
-
     IB_OUR_ACC_TRANSFER,
     IB_FREE_FORMAT_STATEMENT,
     IB_PAY_RUB,
@@ -18,7 +12,5 @@ public enum DocType {
     IB_CARD_REISSUE;
 
     @Override
-    public String toString() {
-        return name().toLowerCase(Locale.ROOT);
-    }
+    public String toString() { return name().toLowerCase(); }
 }

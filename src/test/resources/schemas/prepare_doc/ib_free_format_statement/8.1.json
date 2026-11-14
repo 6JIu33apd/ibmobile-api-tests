@@ -2,19 +2,12 @@
   "$schema" : "http://json-schema.org/draft-04/schema#",
   "type" : "object",
   "properties" : {
-    "responseCode" : {
-      "type" : "integer",
-      "enum" : [ 1 ]
-    },
-    "authMethod" : {
-      "type" : "string"
-    },
+    "responseCode" : { "type" : "integer", "enum" : [ 1 ] },
+    "authMethod" : { "type" : "string" },
     "noneAuthInit" : {
       "type" : "object",
       "properties" : {
-        "code" : {
-          "type" : "string"
-        }
+        "code" : { "type" : "string" }
       },
       "required" : [ "code" ],
       "additionalProperties" : false
@@ -22,77 +15,42 @@
     "doc" : {
       "type" : "object",
       "properties" : {
-        "docDate" : {
-          "type" : "string"
-        },
-        "fullName" : {
-          "type" : "string"
-        },
-        "text" : {
-          "type" : "string"
-        },
-        "needConfirm" : {
-          "type" : "boolean"
-        },
-        "docTypeDesc" : {
-          "type" : "string"
-        },
+        "docDate" : { "type" : "string" },
+        "fullName" : { "type" : "string" },
+        "text" : { "type" : "string" },
+        "needConfirm" : { "type" : "boolean" },
+        "docTypeDesc" : { "type" : "string" },
         "attachmentsList" : {
           "type" : "array",
           "items" : {
             "type" : "object",
             "properties" : {
-              "filename" : {
-                "type" : "string"
-              },
-              "filesize" : {
-                "type" : "integer"
-              },
-              "md5" : {
-                "type" : "string"
-              },
-              "contentType" : {
-                "type" : "string"
-              }
+              "filename" : { "type" : "string" },
+              "filesize" : { "type" : "integer" },
+              "md5" : { "type" : "string" },
+              "contentType" : { "type" : "string" }
             },
             "required" : [ "filename", "filesize", "md5", "contentType" ],
             "additionalProperties" : false
           }
         },
-        "docType" : {
-          "type" : "string",
-          "enum" : [ "ib_free_format_statement" ]
-        },
-        "availableForPrinting" : {
-          "type" : "string"
-        }
+        "docType" : { "type" : "string", "enum" : [ "ib_free_format_statement" ] },
+        "availableForPrinting" : { "type" : "string" }
       },
       "required" : [ "docDate", "fullName", "text", "needConfirm", "docTypeDesc", "attachmentsList", "docType", "availableForPrinting" ],
       "additionalProperties" : false
     },
     "authMethods" : {
       "type" : "array",
-      "items" : {
-        "type" : "string"
-      }
+      "items" : { "type" : "string" }
     },
     "checkResult" : {
       "type" : "array",
-      "items" : {
-        "$ref" : "../../errors/check_failed.json#/properties/checkResult/items"
-      }
+      "items" : { "$ref" : "../../errors/check_failed.json#/properties/checkResult/items" }
     },
-    "checkSuccess" : {
-      "type" : "boolean",
-      "enum" : [ true ]
-    },
-    "resultCode" : {
-      "type" : "string",
-      "enum" : [ "SUCCESS" ]
-    },
-    "resultMessage" : {
-      "type" : "string"
-    }
+    "checkSuccess" : { "type" : "boolean", "enum" : [ true ] },
+    "resultCode" : { "type" : "string", "enum" : [ "SUCCESS" ] },
+    "resultMessage" : { "type" : "string" }
   },
   "required" : [ "responseCode", "authMethod", "noneAuthInit", "doc", "authMethods", "checkResult", "checkSuccess", "resultCode", "resultMessage" ],
   "additionalProperties" : false

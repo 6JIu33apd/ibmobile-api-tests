@@ -125,6 +125,12 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 
 ### Наблюдения на dev
 
+- `full_history/5.0`: выборка по датам возвращает `dateFrom`/`dateTo`, по странице — `offset`/`limit`/`hasMoreByDate`;
+  если переданы обе пары, используется страница. Без `method` история возвращается; `limit=2` заменяется на 10.
+  Неполные пары параметров, отсутствие обеих пар и обратный период → errorCode 4; без / несуществующий ticket → 1.
+  `acc` фильтрует по `history[].acc` или `accCred`; `debit_or_credit=1` — списания, 2 — зачисления.
+  Повторяющийся `doc_type` принимается списком; `www_card_pay` исключается из `docTypes` ответа.
+  `srcId` есть не у всех операций; `details` может содержать вложенные операции. Пустая история сохраняет формат выбранного режима.
 - `ib_our_acc_transfer` (шаблон `{"amount","accDeb","accCred"}`): сумма 0 / -1 / без суммы → errorCode 4.
   Отказы проверок: больше остатка → `amountDeb` «Недостаточно средств на счете списания»; тот же счёт → `accCred`
   «Счет зачисления должен отличаться от счета списания»; чужой счёт списания или зачисления → `all` «Счет не найден»;
@@ -172,7 +178,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 
 ## Неочевидное в коде
 
-Пакеты `config`, `api`, `core`, `tests`; Session и TestContext — в `core`, сбор образцов и генерация схем — в `tools/SchemaDraft` (подробно — README).
+Пакеты `config`, `api`, `core`, `tests`; Session — в `core`, сбор образцов и генерация схем — в `tools/SchemaDraft` (подробно — README).
 
 - **Контур — у теста:** dev по умолчанию, `@PreProd` / `@Prod` (метод или класс) — preprod / prod. `BaseTest` ставит
   `Config.setEnv` (ThreadLocal: тест целиком в одном потоке). В аннотациях мета-`@ResourceLock("<env>")` — тесты preprod и
@@ -183,18 +189,21 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   `BaseTest` один раз задаёт `RestAssured.config` и `HttpFilter` в статическом блоке; base URL выбирается фильтром на потоке запроса.
   `HttpFilter` безусловно добавляет uid, пишет Allure, проверяет HTTP 200/errorCode; тайм-ауты — 10 с / 2 мин. URLENC кодирует Rest Assured;
   повторные secure — готовые JSON-строки. Multipart-тексты — `text/plain; UTF-8`; Allure получает карту параметров «ключ=значение», файлы описаны в doc_content.attachmentsList.
+  Ticket добавляется автоматически из сессии, кроме Auth/ticket (POST) и `.auth().none()`; явно заданный ticket сохраняется.
 - Дробные числа ответа — `BigDecimal` (`NumberReturnType.BIG_DECIMAL`): по умолчанию Rest Assured даёт `Float`,
   `12345678.91` → `12345679` (проверено); целые остаются `Integer`.
-- `TestContext` хранит `JsonPath` целых ответов; суммы читаются через `response.jsonPath().getObject(path, BigDecimal.class)`.
+- Ответы помощников — локальные `JsonPath`; суммы читаются через `response.jsonPath().getObject(path, BigDecimal.class)`.
 - Multipart задаётся явно. `doc_content` — строка `.toString()`: передача ObjectNode при multipart падает до фильтра.
   `DocContent.attach` добавляет файлы из classpath `files/` и attachmentsList до запроса; `HttpFilter` содержимое документа не меняет.
-- `Confirm.send` принимает способ строкой NONE/SMSPWD/SCRETCH, выполняет подтверждение и возвращает ответ send_doc; `secure` — внутренний метод.
+- `Confirm.send(method, prepared)` принимает способ строкой NONE/SMSPWD/SCRETCH, выполняет подтверждение и возвращает ответ send_doc.
   Jackson экранирует пароль. Session отвечает только за вход, ticket и логаут.
   `DocContent.load` читает шаблон, `set` меняет поле по пути.
   В таблицах без параметра — `formParams(value == null ? Map.of() : Map.of(name, value))`; `formParam(null)` не удаляет поле. `Session.close()` не роняет тест.
-- `TestContext` — именованные `JsonPath` в поле BaseTest, новый экземпляр на кейс (JUnit `PER_METHOD`); `put` сохраняет или заменяет готовый ответ.
-  `find(name, path)` выбирает по полному GPath: `null` — пропуск; `get(name).get(path)` отдаёт значение как есть. Нет ответа в кэше или ошибка GPath — ошибка теста.
+- `BaseTest.find(response, path)` выбирает из JsonPath по полному GPath: `null` — пропуск; `response.get(path)` отдаёт значение как есть. Ошибка GPath — ошибка теста.
   На помощниках `HttpFilter` проверяет HTTP/errorCode, `success` вызывается явно в тесте; схема — только у целевой ручки. Логаут при закрытии сессии не проверяет схему.
+- `BaseTest` передаёт в `Session.open` ключ `@Login` или null; Session выбирает `login` по умолчанию. Вход ленивый: первый защищённый запрос или `Session.current().login()`.
+  Сессия — ThreadLocal; каждый `Session.open` заменяет её новой. Автоматический `Session.close()` в BaseTest отключён по решению пользователя: сервер блокирует его на ручке логаута.
+  Явный `Session.current().logout()` сохранён для контрактного теста логаута; после выхода ticket не обновляется.
 - `SchemaDraft` сохраняет ответы до проверок в `.schema-samples/`; допустимые технические ошибки — по общей `ErrorCode.SCHEMA`, одинаковые тела не дублируются.
   `unexpected/` — для разбора, не для генерации. После JUnit-прогона `SchemaDraft` строит черновики из накопленного корпуса в `target/schema-drafts/`;
   утверждённые схемы не меняются. Вариант send_doc — из последнего prepare_doc: ThreadLocal в SchemaDraft очищается после кейса.
@@ -213,17 +222,17 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   Файлов `resources/env` и старого `secrets.properties` в загрузке нет; ключ URL — `baseurl` в нижнем регистре.
 - `Section` пополняется по мере появления классов — неиспользуемые группы не удалять.
 
-### Последний полный прогон на dev — 15.11.2026
+### Последний полный прогон на dev — 17.11.2026
 
-55 тестов: `AccDetailsTest` 10 (2 пропуска: нет валютных дебетовых/кредитных), `AccListTest` 3,
+67 тестов: `AccDetailsTest` 10 (2 пропуска: нет валютных дебетовых/кредитных), `AccListTest` 3,
 `AuthTicketTest` 3, `IbCardChargebackStatementTest` 16, `IbFreeFormatStatementTest` 6, `IbOurAccTransferTest` 10,
-`PriorInfoTest` 7. SendDocTest удалён; prepare_doc проверяется отдельно, отправка доступна как вспомогательный шаг.
+`PriorInfoTest` 7, `FullHistoryTest` 12. SendDocTest удалён; prepare_doc проверяется отдельно, отправка доступна как вспомогательный шаг.
 
-Итого: 52 прошли, 1 упал, 2 пропущены. Падает только известный `unknownOperation` — серверный errorCode 2;
+Итого: 64 прошли, 1 упал, 2 пропущены. Падает только известный `unknownOperation` — серверный errorCode 2;
 кейс оставлен по решению пользователя. Повторных запусков не было.
 Отправлено 9 документов: дебетовый перевод — NONE, кредитный перевод и 7 chargeback — SMSPWD.
 Свободная форма сейчас проверяет только prepare_doc. Для SCRETCH на dev нужна активная скретч-карта.
-Allure: 55 результатов; SchemaDraft: 18 черновиков. Аудит Java, 16 утверждённых схем и 3 шаблонов новых ошибок не выявил.
+Allure: 67 результатов; SchemaDraft: 19 черновиков. Аудит Java, 17 утверждённых схем и 3 шаблонов новых ошибок не выявил.
 
 ## Окружение и подводные камни
 
@@ -240,16 +249,18 @@ Allure: 55 результатов; SchemaDraft: 18 черновиков. Ауд�
 ## Решения (не возвращаться)
 
 - Сессия — на тест, ленивая, `@Login("ключ")` на методе (было: enum Profile; логин в теле теста — пользователь против).
+  Ticket передаёт HttpFilter; `.auth().none()` отключает его для одного запроса, в том числе негативного без ticket.
 - Фильтр контуров — в pom (`excludedGroups=preprod,prod`, профиль `all-envs`), а не в JUnit: теги фильтрует surefire,
   IDEA запускает выбранный тест на его контуре. Проверено пустыми тестами.
 - Контур — у теста (`@PreProd` / `@Prod`); было: `-Denv`/`-Drelease` на прогон, prod-guard по `@Tag("prod")`, `config.Threads`.
 - Запросы — нативный Rest Assured, без собственного builder и HTTP-фасадов; `DocContent` готовит документ, `Confirm.send` — подтверждение и отправка.
-  Пакет data удалён: ответы — в TestContext, параметры — в тестовом классе.
+  Пакет data удалён: ответы — в локальных JsonPath, параметры — в тестовом классе.
   Перегрузки помощников не добавлять. `Endpoint.schema(DocType...)` — один метод на 0/1 аргумент без проверки количества. `DocType` — enum, на класс не вешается.
 - Классы doc_type проверяют prepare_doc; SendDocTest удалён, send_doc только помощник для отправки документов. AuthTicketTest объединяет логин/логаут.
   Простым URLENC-ручкам отдельные шаблоны не нужны. Переводы и chargeback отправляются через Confirm.send; схема проверяется только у prepare_doc.
 - Один кейс не запускается одновременно на разных контурах; общий doc_content не требует версионирования по контурам. Шаблон ответа — JSON Schema.
 - Негативы — в каждом классе (было: общий `CommonAuthTest`); статические таблицы `Arguments[]` + `@FieldSource` поверх валидного запроса.
+- `FullHistoryTest`: данные формы — в классе; период и пагинация проверяются отдельными запросами.
 - Allure: верхний уровень — группы функций `Section` (было: «Сервисы»/«Ещё»).
 - Негативные — вложенный класс `@Nested @Negative class Negatives` (мета: `@Story`, `@DisplayName`;
   `@Nested` — явно: в мета-аннотации JUnit его видит, инспекция IDEA — нет); было:

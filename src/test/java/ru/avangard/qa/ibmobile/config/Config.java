@@ -15,15 +15,20 @@ public final class Config {
     private static final ThreadLocal<String> ENV = new ThreadLocal<>();
     private static final Map<String, Properties> CACHE = new ConcurrentHashMap<>();
 
-    private Config() {}
+    private Config() {
+    }
 
-    public static void setEnv(String env) { ENV.set(env); }
+    public static void setEnv(String env) {
+        ENV.set(env);
+    }
 
     public static Properties settings() {
         return CACHE.computeIfAbsent(ENV.get(), env -> load(Path.of(System.getProperty("user.home"), ".ibmobile", env + ".properties").toUri().toString()));
     }
 
-    public static String get(String key) { return Objects.requireNonNull(settings().getProperty(key)); }
+    public static String get(String key) {
+        return Objects.requireNonNull(settings().getProperty(key));
+    }
 
     public static Properties load(String source) {
         try (var in = new InputStreamReader(URI.create(source).toURL().openStream(), UTF_8.newDecoder())) {
@@ -31,6 +36,8 @@ public final class Config {
             properties.load(in);
             properties.values().removeIf(value -> value.toString().isBlank());
             return properties;
-        } catch (IOException e) { throw new UncheckedIOException(source, e); }
+        } catch (IOException e) {
+            throw new UncheckedIOException(source, e);
+        }
     }
 }

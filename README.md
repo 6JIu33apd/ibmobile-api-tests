@@ -42,7 +42,7 @@ mvnw allure:serve                    # отчёт
 Контур задаётся у теста, а не у прогона: по умолчанию dev, `@PreProd` / `@Prod` на методе или классе — preprod / prod.
 Тест запускается на контуре с нужной версией.
 Аннотации вложены в `BaseTest`; для аннотации на классе нужен импорт `BaseTest.PreProd` или `BaseTest.Prod`.
-Выбор делает `BaseTest` перед кейсом; в `Config` контура по умолчанию нет. Для вызовов API вне `BaseTest` сначала нужен `Config.setEnv(...)`.
+Выбор делает `BaseTest` перед кейсом; в `Config` контура по умолчанию нет. Вне `BaseTest` нужны `Config.setEnv(...)` и `Session.open(ключ)`.
 
 | Контур | Аннотация | Логины | Параллельно |
 |---|---|---|---|
@@ -61,7 +61,7 @@ src/test/java/ru/avangard/qa/ibmobile/
   api/      Endpoint, DocType, HttpFilter,    ручки, типы документов, транспорт, проверки ответа,
             ResponseChecks, ErrorCode           допустимые ошибки
   core/     BaseTest (Login, PreProd, Prod, Negative) база тестов и вложенные аннотации
-            Session, TestContext                сессия и ответы помощников кейса
+            Session                             сессия кейса
             DocContent, Confirm, Db             тело документа, подтверждение и чтение БД
   tests/    Section, <домен>/<Ручка>Test       тесты; Section — группы в Allure
   tools/    SchemaDraft                        черновики JSON-схем из реальных ответов
@@ -107,15 +107,15 @@ src/test/resources/
 ## Запрос и ответ
 
 ```java
-Response response = given().formParam("ticket", session().ticket).formParam("account", account).post(ACC_DETAILS.path());
+Response response = given().formParam("account", account).post(ACC_DETAILS.path());
 success(response);
 matchesSchema(response, ACC_DETAILS.schema());
 String actualAccount = response.path("accBalanceDetails[0].account");
 ```
 
 - `given`, `formParam`, `post`/`delete` — нативный Rest Assured; проверки — статические методы `ResponseChecks`.
-- `HttpFilter` подключается в `BaseTest` и вызывается Rest Assured при каждом запросе: добавляет `uid` и base URL,
-  сохраняет ответ и проверяет HTTP/errorCode. Возвращённый `Response` получает тест; `ticket` передаётся явно через `formParam`.
+- `HttpFilter` подключается в `BaseTest`: добавляет `uid`, ticket сессии и base URL, сохраняет ответ и проверяет HTTP/errorCode.
+  Явный `formParam("ticket", ...)` сохраняется. Запрос логина и `given().auth().none()` автоматический ticket не получают.
 - `null` в `formParam` не означает пропуск: в таблицах — `formParams(value == null ? Map.of() : Map.of(name, value))`.
 - Тело — URLENC; для multipart явно задаётся `.contentType(MULTIPART)`.
 - Коллекция в `formParam` — несколько одноимённых параметров (например, два `secure` в `send_doc`).
@@ -160,13 +160,14 @@ String actualAccount = response.path("accBalanceDetails[0].account");
 
 Одна сессия — на один тест: одна ручка разным пользователям отдаёт разные данные.
 
-- Все классы наследуют `BaseTest`. `session()` — сессия теста: логин при первом обращении, логаут после теста.
-  Тест без `session()` не логинится.
-- По умолчанию логин берётся из ключа `login`. `@Login("loginextra")` на методе выбирает другой ключ того же файла.
+- Все классы наследуют `BaseTest`: перед кейсом он вызывает `Session.open(ключ)`, заменяя сессию в ThreadLocal.
+  Первый защищённый запрос выполняет вход; последующие используют тот же ticket. Автоматический логаут после кейса отключён.
+- По умолчанию ключ — `login`. `@Login("loginextra")` на методе выбирает другой ключ того же файла.
   В аннотации указывается имя ключа, а не реальный логин; новые ключи не требуют enum или правок конфигурационного кода.
 - `password`, `sms`, `scretch` общие для всех логинов контура. Коды требуются только для выбранного способа подтверждения.
   Нет выбранного логина — тест пропускается; отсутствие файла или другого нужного значения роняет тест.
-- Логаут — тоже через `session()`: `session().logout()`; повторный логаут после теста не выполняется.
+- `given().auth().none()` отключает автоматический ticket только для этого запроса: так пишутся публичные запросы и негативы без ticket.
+- `Session.current().login()` возвращает ответ логина; `Session.current().logout()` — ответ логаута. После выхода ticket не обновляется, повторного логаута нет.
 - Неверный пароль реальных профилей не тестируем (блокировка); негатив логина — несуществующий логин.
 - Смена логина/пароля тестируется отдельными логинами: ticket становится недействительным, исходные данные восстанавливает сам тест.
 
@@ -179,14 +180,14 @@ prepare_doc вызывается через нативный `given()`, отпр
 Вызов send_doc добавляется явно в нужный позитив; отдельного контрактного класса для этой ручки пока нет.
 
 ```java
-Response prepared = given().contentType(MULTIPART).formParam("ticket", session().ticket)
+Response prepared = given().contentType(MULTIPART)
         .formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent().toString()).post(PREPARE_DOC.path());
 success(prepared);
 matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
-success(Confirm.send("NONE", session(), prepared));
+success(Confirm.send("NONE", prepared));
 ```
 
-| Способ | Подтверждение перед send_doc в `Confirm.send(method, session, prepared)` |
+| Способ | Подтверждение перед send_doc в `Confirm.send(method, prepared)` |
 |---|---|
 | `NONE` | `secure` с токеном `noneAuthInit.code` |
 | `SMSPWD` | `check_password/1.1` с паролем входа → `send_confirm_sms/1.1` → два `secure`: SMS с кодом `sms`, PWD с паролем |
@@ -202,12 +203,10 @@ success(Confirm.send("NONE", session(), prepared));
 
 `DocContent.load(DOC_TYPE)` читает тело из `doc_content/<doc_type>.json` (копия из Postman) как Jackson `ObjectNode`.
 В multipart `doc_content` передаётся строкой через `.toString()`: Rest Assured не сериализует ObjectNode с этим Content-Type.
-В тестовом классе есть валидный вариант по умолчанию, кейс меняет в нём поля. JSON на каждый кейс не нужен.
+Шаблон содержит данные по умолчанию; тест подставляет динамические значения и меняет нужные поля. JSON на каждый кейс не нужен.
 
 ```java
-private static ObjectNode docContent() {
-    return DocContent.load(DOC_TYPE).put("text", TEXT);
-}
+ObjectNode docContent = DocContent.load(DOC_TYPE);
 ```
 
 Статические параметры — таблица `Arguments[]` в самом тестовом классе и `@FieldSource`:
@@ -225,8 +224,8 @@ static final Arguments[] REJECTIONS = {
 @ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")
 @FieldSource("REJECTIONS")
 void rejection(String field, Object value, String badItem, String errorMessage) {
-    Response response = given().contentType(MULTIPART).formParam("ticket", session().ticket).formParam("doc_type", DOC_TYPE.toString())
-            .formParam("doc_content", DocContent.set(docContent(), field, value).toString()).post(PREPARE_DOC.path());
+    Response response = given().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
+            .formParam("doc_content", DocContent.set(DocContent.load(DOC_TYPE), field, value).toString()).post(PREPARE_DOC.path());
     rejected(response, badItem, errorMessage);
 }
 ```
@@ -238,8 +237,8 @@ void rejection(String field, Object value, String badItem, String errorMessage) 
 Без файлов исходное описание сохраняется; транспорт не меняет содержимое документа:
 
 ```java
-ObjectNode docContent = docContent();
-RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+ObjectNode docContent = DocContent.load(DOC_TYPE);
+RequestSpecification request = given().contentType(MULTIPART);
 DocContent.attach(request, docContent, "image.png");
 Response response = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
 success(response);
@@ -250,21 +249,19 @@ success(response);
 ## Данные из других ручек
 
 Тестовые данные (номера счетов и т. п.) берутся из ответов других ручек, а не хранятся в репозитории.
-`TestContext` хранит готовые `JsonPath` по имени на один кейс; `put` сохраняет или заменяет ответ.
-Запрос помощника и проверка его успеха задаются в тесте:
+Ответ помощника хранится в локальном `JsonPath`; запрос и проверка его успеха задаются в тесте:
 
 ```java
-context.put("accList", success(given().formParam("ticket", session().ticket).post(ACC_LIST.path())));
-String account = context.find("accList", "accounts.account.findAll { it.cardAcc && !it.isCredit }.sort { -it.otb }[0]?.code");
-List<?> accounts = context.get("accList").get("accounts.account");
+var accList = success(given().post(ACC_LIST.path()));
+String account = find(accList, "accounts.account.findAll { it.cardAcc && !it.isCredit }.max { it.otb }?.code");
+List<?> accounts = accList.get("accounts.account");
 ```
 
-Выборка — полный GPath (Groovy) из теста: условия, сортировка и нужное поле.
-`find(name, path)` пропускает кейс при `null`; `get(name).get(path)` позволяет обработать `null` в тесте.
-Отсутствие сохранённого ответа и ошибки выполнения GPath роняют тест.
+Выборка — полный GPath (Groovy) из теста: условия и нужное поле.
+`BaseTest.find(response, path)` пропускает кейс при `null`; `response.get(path)` позволяет обработать `null` в тесте. Ошибки GPath роняют тест.
 
-Контекст принадлежит экземпляру теста (JUnit `PER_METHOD`); разные параметры — разные имена. `HttpFilter` проверяет HTTP/errorCode,
-успех помощника — явный `success(...)` в тесте; схема — только у целевой ручки. Отдельных классов данных и общих таблиц кейсов нет.
+`HttpFilter` проверяет HTTP/errorCode, успех помощника — явный `success(...)` в тесте; схема — только у целевой ручки.
+Отдельных классов данных и общих таблиц кейсов нет.
 
 ## Отчёт Allure
 
@@ -287,7 +284,7 @@ List<?> accounts = context.get("accList").get("accounts.account");
 | 2 | `@Nested @Negative class Negatives`, в нём — таблица `invalidParameters` → `error(response, INVALID_PARAMETERS)` | параметр запроса → значение | поле документа → значение |
 | 3 | таблица `rejections` → `rejected(response, badItem, errorMessage)` | — | поле документа → значение |
 | 4 | особые кейсы — отдельные методы | — | `sameAccount()` |
-| 5 | `withoutTicket`: запрос без `formParam("ticket", ...)` → `error(response, AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
+| 5 | `withoutTicket`: запрос с `.auth().none()` → `error(response, AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
 | 6 | данные по умолчанию | условие выбора счёта | `docContent(condition)` |
 
 Кейс таблицы меняет одно значение в валидном запросе, `null` — убирает его:
@@ -314,7 +311,7 @@ class AccListTest extends BaseTest {
     @DisplayName("Счета клиента с уникальными 20-значными номерами")
     @Test
     void accList() {
-        Response response = given().formParam("ticket", session().ticket).post(ACC_LIST.path());
+        Response response = given().post(ACC_LIST.path());
         success(response);
         matchesSchema(response, ACC_LIST.schema());
         assertThat(response.<List<String>>path("accounts.account.code")).isNotEmpty().doesNotHaveDuplicates();
@@ -327,7 +324,7 @@ class AccListTest extends BaseTest {
         @DisplayName("Запрос без ticket отклоняется")
         @Test
         void withoutTicket() {
-            error(given().post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
+            error(given().auth().none().post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

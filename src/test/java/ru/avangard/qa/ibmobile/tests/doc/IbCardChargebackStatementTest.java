@@ -46,16 +46,16 @@ class IbCardChargebackStatementTest extends BaseTest {
     void statement(int reasonType) {
         ObjectNode docContent = docContent().put("reasonType", reasonType);
         List<Long> opersList = docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList();
-        RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+        RequestSpecification request = given().contentType(MULTIPART);
         DocContent.attach(request, docContent, FILE);
         Response prepared = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
         success(prepared);
         matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
-        assertThat(prepared.<Number>path("doc.cardId").longValue()).as("карта").isEqualTo(docContent.get("cardId").asLong());
+        assertThat(prepared.jsonPath().getLong("doc.cardId")).as("карта").isEqualTo(docContent.get("cardId").asLong());
         assertThat(prepared.<Integer>path("doc.reasonType")).as("причина").isEqualTo(reasonType);
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").containsExactly(FILE);
         assertThat(prepared.<List<Number>>path("doc.opersList")).as("операции").extracting(Number::longValue).containsExactlyElementsOf(opersList);
-        success(Confirm.send("SMSPWD", session(), prepared));
+        success(Confirm.send("SMSPWD", prepared));
     }
 
     @Nested @Negative
@@ -75,7 +75,7 @@ class IbCardChargebackStatementTest extends BaseTest {
         @FieldSource("REJECTIONS")
         void rejection(String field, Object value, String badItem, String errorMessage, String[] files) {
             ObjectNode docContent = DocContent.set(docContent(), field, value);
-            RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+            RequestSpecification request = given().contentType(MULTIPART);
             DocContent.attach(request, docContent, files);
             rejected(request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString())
                     .post(PREPARE_DOC.path()), badItem, errorMessage);
@@ -85,7 +85,7 @@ class IbCardChargebackStatementTest extends BaseTest {
         @Test
         void unknownOperation() {
             ObjectNode docContent = DocContent.set(docContent(), "opersList", List.of(1));
-            RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+            RequestSpecification request = given().contentType(MULTIPART);
             DocContent.attach(request, docContent, FILE);
             assertThat(request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString())
                     .post(PREPARE_DOC.path()).<String>path("resultCode")).as("отказ проверок").isEqualTo("FAILED");
@@ -95,16 +95,15 @@ class IbCardChargebackStatementTest extends BaseTest {
         @Test
         void withoutTicket() {
             ObjectNode docContent = docContent();
-            RequestSpecification request = given().contentType(MULTIPART);
+            RequestSpecification request = given().auth().none().contentType(MULTIPART);
             DocContent.attach(request, docContent, FILE);
             error(request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
         }
     }
 
     private ObjectNode docContent() {
-        context.put("priorInfo." + DOC_TYPE,
-                success(given().formParam("ticket", session().ticket).formParam("doc_type", DOC_TYPE.toString()).post(PRIOR_INFO.path())));
-        Number cardId = context.find("priorInfo." + DOC_TYPE, "accountList.cards.flatten().id[0]");
-        return DocContent.load(DOC_TYPE).put("cardId", cardId.longValue()).put("description", "Заявление автотеста о несогласии с операцией");
+        var priorInfo = success(given().formParam("doc_type", DOC_TYPE.toString()).post(PRIOR_INFO.path()));
+        Number cardId = find(priorInfo, "accountList.cards.flatten().id[0]");
+        return DocContent.load(DOC_TYPE).put("cardId", cardId.longValue());
     }
 }

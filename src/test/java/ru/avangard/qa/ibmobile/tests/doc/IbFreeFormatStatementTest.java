@@ -28,7 +28,6 @@ import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
 @Feature("Заявление в свободной форме")
 class IbFreeFormatStatementTest extends BaseTest {
     private static final DocType DOC_TYPE = DocType.IB_FREE_FORMAT_STATEMENT;
-    private static final String TEXT = "Тестовое заявление автотеста";
 
     static final Arguments[] FILES = {
             argumentSet("без вложения", List.of()),
@@ -38,13 +37,13 @@ class IbFreeFormatStatementTest extends BaseTest {
     @ParameterizedTest(name = "Заявление в свободной форме {argumentSetName}")
     @FieldSource("FILES")
     void statement(List<String> files) {
-        ObjectNode docContent = docContent();
-        RequestSpecification request = given().contentType(MULTIPART).formParam("ticket", session().ticket);
+        ObjectNode docContent = DocContent.load(DOC_TYPE);
+        RequestSpecification request = given().contentType(MULTIPART);
         DocContent.attach(request, docContent, files.toArray(String[]::new));
         Response prepared = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
         success(prepared);
         matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
-        assertThat(prepared.<String>path("doc.text")).as("текст заявления").isEqualTo(TEXT);
+        assertThat(prepared.<String>path("doc.text")).as("текст заявления").isEqualTo(docContent.get("text").asText());
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").isEqualTo(files);
     }
 
@@ -61,19 +60,15 @@ class IbFreeFormatStatementTest extends BaseTest {
         @ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")
         @FieldSource("REJECTIONS")
         void rejection(String field, Object value, String badItem, String errorMessage) {
-            rejected(given().contentType(MULTIPART).formParam("ticket", session().ticket).formParam("doc_type", DOC_TYPE.toString())
-                    .formParam("doc_content", DocContent.set(docContent(), field, value).toString()).post(PREPARE_DOC.path()), badItem, errorMessage);
+            rejected(given().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
+                    .formParam("doc_content", DocContent.set(DocContent.load(DOC_TYPE), field, value).toString()).post(PREPARE_DOC.path()), badItem, errorMessage);
         }
 
         @DisplayName("Подготовка без ticket отклоняется")
         @Test
         void withoutTicket() {
-            error(given().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
-                    .formParam("doc_content", docContent().toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
+            error(given().auth().none().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
+                    .formParam("doc_content", DocContent.load(DOC_TYPE).toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
         }
-    }
-
-    private static ObjectNode docContent() {
-        return DocContent.load(DOC_TYPE).put("text", TEXT);
     }
 }

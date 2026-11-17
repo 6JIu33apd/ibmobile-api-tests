@@ -35,9 +35,9 @@ class AccDetailsTest extends BaseTest {
     @ParameterizedTest(name = "Деталка счёта из списка счетов ({argumentSetName})")
     @FieldSource("ACCOUNTS")
     void details(String condition) {
-        context.put("accList", success(given().formParam("ticket", session().ticket).post(ACC_LIST.path())));
-        String account = context.find("accList", "accounts.account.findAll { " + condition + " }.sort { -it.otb }[0]?.code");
-        Response details = given().formParam("ticket", session().ticket).formParam("account", account).post(ACC_DETAILS.path());
+        var accList = success(given().post(ACC_LIST.path()));
+        String account = find(accList, "accounts.account.findAll { " + condition + " }.max { it.otb }?.code");
+        Response details = given().formParam("account", account).post(ACC_DETAILS.path());
         success(details);
         matchesSchema(details, ACC_DETAILS.schema());
         assertThat(details.<String>path("accBalanceDetails[0].account")).as("счёт").isEqualTo(account);
@@ -53,16 +53,15 @@ class AccDetailsTest extends BaseTest {
         @ParameterizedTest(name = "Запрос с некорректными параметрами отклоняется ({argumentSetName})")
         @FieldSource("INVALID_CASES")
         void invalidParameters(Object value) {
-            error(given().formParam("ticket", session().ticket)
-                    .formParams(value == null ? Map.of() : Map.of("account", value)).post(ACC_DETAILS.path()), INVALID_PARAMETERS);
+            error(given().formParams(value == null ? Map.of() : Map.of("account", value)).post(ACC_DETAILS.path()), INVALID_PARAMETERS);
         }
 
         @DisplayName("Запрос без ticket отклоняется")
         @Test
         void withoutTicket() {
-            context.put("accList", success(given().formParam("ticket", session().ticket).post(ACC_LIST.path())));
-            String account = context.find("accList", "accounts.account.findAll { " + DEBIT + " }.sort { -it.otb }[0]?.code");
-            error(given().formParam("account", account).post(ACC_DETAILS.path()), AUTHORIZATION_REQUIRED);
+            var accList = success(given().post(ACC_LIST.path()));
+            String account = find(accList, "accounts.account.findAll { " + DEBIT + " }.max { it.otb }?.code");
+            error(given().auth().none().formParam("account", account).post(ACC_DETAILS.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

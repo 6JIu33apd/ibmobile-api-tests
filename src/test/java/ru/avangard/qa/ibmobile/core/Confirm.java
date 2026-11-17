@@ -17,20 +17,18 @@ public final class Confirm {
     private Confirm() {
     }
 
-    public static Response send(String method, Session session, Response prepared) {
-        return given().formParam("ticket", session.ticket)
-                .formParam("secure", secure(method, session, prepared)).post(SEND_DOC.path());
-    }
-
-    private static List<String> secure(String method, Session session, Response prepared) {
+    public static Response send(String method, Response prepared) {
+        List<String> secure;
         if (method.equals("SMSPWD")) {
             String password = Config.get("password");
-            success(given().formParam("ticket", session.ticket).formParam("password", password).post(CHECK_PASSWORD.path()));
-            success(given().formParam("ticket", session.ticket).post(SEND_CONFIRM_SMS.path()));
-            return List.of(token("SMS", Config.get("sms")), token("PWD", password));
+            success(given().formParam("password", password).post(CHECK_PASSWORD.path()));
+            success(given().post(SEND_CONFIRM_SMS.path()));
+            secure = List.of(token("SMS", Config.get("sms")), token("PWD", password));
+        } else {
+            if (method.equals("SCRETCH")) success(given().post(SHOW_SCRETCH.path()));
+            secure = List.of(token(method, method.equals("NONE") ? prepared.path("noneAuthInit.code") : Config.get("scretch")));
         }
-        if (method.equals("SCRETCH")) success(given().formParam("ticket", session.ticket).post(SHOW_SCRETCH.path()));
-        return List.of(token(method, method.equals("NONE") ? prepared.path("noneAuthInit.code") : Config.get("scretch")));
+        return given().formParam("secure", secure).post(SEND_DOC.path());
     }
 
     private static String token(String method, String value) {

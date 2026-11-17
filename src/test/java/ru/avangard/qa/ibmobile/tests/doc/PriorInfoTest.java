@@ -33,7 +33,7 @@ class PriorInfoTest extends BaseTest {
     @ParameterizedTest(name = "Данные для документа ({argumentSetName})")
     @FieldSource("DOC_TYPES")
     void priorInfo(DocType docType, String listPath) {
-        Response priorInfo = given().formParam("ticket", session().ticket).formParam("doc_type", docType.toString()).post(PRIOR_INFO.path());
+        Response priorInfo = given().formParam("doc_type", docType.toString()).post(PRIOR_INFO.path());
         success(priorInfo);
         matchesSchema(priorInfo, PRIOR_INFO.schema(docType));
         assertThat(priorInfo.<List<?>>path(listPath)).as(listPath).isNotEmpty();
@@ -53,14 +53,13 @@ class PriorInfoTest extends BaseTest {
         @ParameterizedTest(name = "Запрос с некорректными параметрами отклоняется ({argumentSetName})")
         @FieldSource("INVALID_CASES")
         void invalidParameters(Object value) {
-            error(given().formParam("ticket", session().ticket)
-                    .formParams(value == null ? Map.of() : Map.of("doc_type", value)).post(PRIOR_INFO.path()), INVALID_PARAMETERS);
+            error(given().formParams(value == null ? Map.of() : Map.of("doc_type", value)).post(PRIOR_INFO.path()), INVALID_PARAMETERS);
         }
 
         @DisplayName("Запрос без ticket отклоняется")
         @Test
         void withoutTicket() {
-            error(given().formParam("doc_type", DocType.IB_PAY_RUB.toString()).post(PRIOR_INFO.path()), AUTHORIZATION_REQUIRED);
+            error(given().auth().none().formParam("doc_type", DocType.IB_PAY_RUB.toString()).post(PRIOR_INFO.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

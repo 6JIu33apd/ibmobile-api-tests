@@ -14,6 +14,7 @@ public enum Endpoint {
     SHOW_SCRETCH("Auth/show_scretch", Method.POST),
     ACC_LIST("Statement/acc_list", Method.POST),
     ACC_DETAILS("Statement/acc_details", Method.POST),
+    FULL_HISTORY("Doc/full_history", Method.POST),
     PRIOR_INFO("Doc/prior_info", Method.POST),
     PREPARE_DOC("Doc/prepare_doc", Method.POST),
     SEND_DOC("Doc/send_doc", Method.POST);

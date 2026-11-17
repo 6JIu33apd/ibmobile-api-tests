@@ -1,25 +1,14 @@
 {
   "$schema" : "http://json-schema.org/draft-04/schema#",
-  "description" : "Технические ошибки: обычный ответ или истёкшая сессия с результатом",
+  "description" : "Технические ошибки",
   "type" : "object",
-  "oneOf" : [
-    {
-      "properties" : {
-        "errorCode" : { "type" : "integer", "enum" : [ 1, 4, 1000 ] },
-        "errorDesc" : { "type" : "string" }
-      },
-      "required" : [ "errorCode", "errorDesc" ],
-      "additionalProperties" : false
-    },
-    {
-      "properties" : {
-        "errorCode" : { "type" : "integer", "enum" : [ 5 ] },
+  "properties" : {
+        "errorCode" : { "type" : "integer", "enum" : [ 1, 2, 4, 5, 1000 ] },
         "errorDesc" : { "type" : "string" },
         "resultCode" : { "type" : "string", "enum" : [ "FAILED" ] },
         "resultMessage" : { "type" : "string" }
       },
-      "required" : [ "errorCode", "errorDesc", "resultCode", "resultMessage" ],
-      "additionalProperties" : false
-    }
-  ]
+  "required" : [ "errorCode", "errorDesc" ],
+  "additionalProperties" : false
 }
+

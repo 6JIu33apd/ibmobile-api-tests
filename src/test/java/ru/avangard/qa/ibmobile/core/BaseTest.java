@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-/** Контур, ключ логина и ленивая сессия одного кейса. */
+/** Контур, ключ логина и сессия одного кейса. */
 @ExtendWith(SchemaDraft.class)
 public abstract class BaseTest {
     static {
@@ -37,7 +37,7 @@ public abstract class BaseTest {
 
     @AfterEach
     void logout() {
-        //Session.close();
+        Session.current().logout();
     }
 
     /** GPath выбирает элемент; если его нет, кейс пропускается. */

@@ -42,7 +42,7 @@ public final class HttpFilter implements Filter {
             SchemaDraft.capture(request.getMethod(), request.getUserDefinedPath(), params, response);
             assertThat(response.statusCode()).as("Ошибка сервера: HTTP %s: %s", target, response.asString()).isEqualTo(200);
             Integer errorCode = response.path("errorCode");
-            assertThat(errorCode == null || Arrays.stream(ErrorCode.values()).anyMatch(error -> error.errorCode == errorCode))
+            assertThat(errorCode == null || (errorCode != 2 && Arrays.stream(ErrorCode.values()).anyMatch(error -> error.errorCode == errorCode)))
                     .as("Ошибка сервера: errorCode %s, %s: %s", errorCode, target, response.asString()).isTrue();
             return response;
         });

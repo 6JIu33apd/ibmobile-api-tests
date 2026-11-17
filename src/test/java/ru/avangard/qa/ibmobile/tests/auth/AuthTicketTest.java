@@ -17,7 +17,7 @@ class AuthTicketTest extends BaseTest {
     @DisplayName("Логин по логину и паролю выдаёт ticket и данные клиента")
     @Test
     void login() {
-        matchesSchema(Session.current().login(), AUTH_LOGIN.schema());
+        matchesSchema(Session.current().loginResponse(), AUTH_LOGIN.schema());
     }
 
     @DisplayName("После логаута ticket недействителен")

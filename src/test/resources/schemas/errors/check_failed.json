@@ -1,6 +1,6 @@
 {
   "$schema" : "http://json-schema.org/draft-04/schema#",
-  "description" : "Бизнес-отказ документа: prepare_doc и send_doc",
+  "description" : "Бизнес-отказы prepare_doc и send_doc",
   "type" : "object",
   "properties" : {
     "responseCode" : { "type" : "integer", "enum" : [ -1 ] },

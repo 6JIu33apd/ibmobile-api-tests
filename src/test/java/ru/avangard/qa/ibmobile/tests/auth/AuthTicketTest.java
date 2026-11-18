@@ -8,9 +8,8 @@ import ru.avangard.qa.ibmobile.tests.Section;
 import static io.restassured.RestAssured.given;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
-import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
+import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
-/** Контракт логина и логаута; недействительность ticket после выхода проверяется через acc_list. */
 @Epic(Section.AUTH)
 @Feature("Логин и логаут")
 class AuthTicketTest extends BaseTest {

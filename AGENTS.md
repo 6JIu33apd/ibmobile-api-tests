@@ -61,7 +61,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   - preprod `http://www.avangard.ru/ibMobile_test/REST`
   - prod `http://www.avangard.ru/ibMobile/REST`
 - Почти все ручки POST; немного GET (публичные, без ticket); один DELETE — логаут.
-- Тело — URLENC; MULTIPART — `prepare_doc` и немногие другие (явный `.contentType(MULTIPART)`). `prepare_doc` ≥ 7.6 принимает
+- Тип тела задаётся в `Endpoint` и применяется в `HttpFilter`. `prepare_doc` ≥ 7.6 принимает
   только multipart (urlenc → «Unsupported Media Type»).
 - Пути версионированы (`Auth/ticket/9.4`, `Doc/prepare_doc/8.1`). На релиз — одна версия ручки, старые версии
   поддерживаются. Обычно от релиза к релизу меняются 1–2 ручки. Текущий релиз бэка — **3.20**.
@@ -85,9 +85,10 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   у send_doc ещё `secureCheck {errorExist}`, иногда `authMethods`. Схема — `schemas/errors/check_failed.json` (ручная).
 - Допустимые технические ошибки — только errorCode 1 `authorization_required` (нет ticket), 4 `invalid_parameters`,
   5 `session_expired` (ещё обязательные `resultCode=FAILED`/`resultMessage`), 1000 «Некорректный логин
-  или пароль пользователя.». 1/4/1000 — только `errorCode`/`errorDesc`; общая `ErrorCode.SCHEMA` — `schemas/errors/error.json` (две строгие ветки `oneOf`).
+  или пароль пользователя.». `ResponseCheck.error()` проверяет `schemas/errors/error.json`: обязательны `errorCode`/`errorDesc`, поля `resultCode=FAILED`/`resultMessage` опциональны.
 - Любой другой errorCode (например, 2 `internal_server_error`) и HTTP не 200 — ошибка сервера, роняет **любой** тест,
   в том числе негативный («Ошибка сервера: …»). Сервер не должен отдавать 500.
+  Ошибка автоматического логаута — исключение: остаётся в HTTP-шаге Allure, не меняя результат теста.
 
 ### Документы
 
@@ -174,7 +175,7 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   селекты упакует в пакет процедур пользователь, тесты только вызывают нужную (`Db` — под это, не упрощать).
 - Логин по умолчанию — ключ `login`; на dev у него два рублёвых дебетовых, кредитный, рублёвый и
   валютные текущие, депозитный (валютных дебетовых и кредитных нет — эти кейсы пропускаются).
-  `@Login("loginextra")` выбирает ключ другого логина. Пароль и коды общие, `Profile` удалён; нет логина — тест пропускается.
+  `@Login("loginextra")` выбирает ключ другого логина. Пароль и коды общие, `Profile` удалён; выбранный логин обязателен.
 
 ## Неочевидное в коде
 
@@ -184,44 +185,46 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
   `Config.setEnv` (ThreadLocal: тест целиком в одном потоке). В аннотациях мета-`@ResourceLock("<env>")` — тесты preprod и
   prod идут по одному (одна сессия на логин), и `@Tag("<env>")`. Проверено без сети. `release` — во внешнем файле контура.
   Аннотации Login, PreProd, Prod, Negative вложены в BaseTest; он выбирает dev по умолчанию. Config требует контур; @Tag его не меняет.
-- Запросы — нативные `given().formParam(...).post(endpoint.path())` (DELETE — только логаут); проверки — статические методы `ResponseChecks`.
+- Запросы — нативные `given().formParam(...).post(endpoint.path())` (DELETE — только логаут); проверки — статические методы `ResponseCheck`.
   `matchesSchema(response, path)` принимает готовый путь: `endpoint.schema()` для обычной ручки, `endpoint.schema(docType)` — для prepare_doc, prior_info и send_doc.
   `BaseTest` один раз задаёт `RestAssured.config` и `HttpFilter` в статическом блоке; base URL выбирается фильтром на потоке запроса.
-  `HttpFilter` безусловно добавляет uid, пишет Allure, проверяет HTTP 200/errorCode; тайм-ауты — 10 с / 2 мин. URLENC кодирует Rest Assured;
+  `HttpFilter` добавляет uid, пишет Allure и проверяет HTTP 200, затем вызывает `ResponseCheck` для проверки `errorCode`. Тайм-ауты — 10 с / 2 мин. URLENC кодирует Rest Assured;
   повторные secure — готовые JSON-строки. Multipart-тексты — `text/plain; UTF-8`; Allure получает карту параметров «ключ=значение», файлы описаны в doc_content.attachmentsList.
   Ticket добавляется автоматически из сессии, кроме Auth/ticket (POST) и `.auth().none()`; явно заданный ticket сохраняется.
 - Дробные числа ответа — `BigDecimal` (`NumberReturnType.BIG_DECIMAL`): по умолчанию Rest Assured даёт `Float`,
   `12345678.91` → `12345679` (проверено); целые остаются `Integer`.
-- Ответы помощников — локальные `JsonPath`; суммы читаются через `response.jsonPath().getObject(path, BigDecimal.class)`.
-- Multipart задаётся явно. `doc_content` — строка `.toString()`: передача ObjectNode при multipart падает до фильтра.
-  `DocContent.attach` добавляет файлы из classpath `files/` и attachmentsList до запроса; `HttpFilter` содержимое документа не меняет.
+- Ответы помощников — локальные `JsonPath` или поля экземпляра при общей подготовке в `@BeforeEach`; суммы читаются через `response.jsonPath().getObject(path, BigDecimal.class)`.
+- `DocContent.attach` добавляет файлы из classpath `files/` в запрос и заполняет `attachmentsList`.
+  Тест заполняет поля формы после добавления вложений и отправляет готовый запрос через `.post()`.
 - `Confirm.send(method, prepared)` принимает способ строкой NONE/SMSPWD/SCRETCH, выполняет подтверждение и возвращает ответ send_doc.
   Jackson экранирует пароль. Session отвечает только за вход, ticket и логаут.
   `DocContent.load` читает шаблон, `set` меняет поле по пути.
   В таблицах без параметра — `formParams(value == null ? Map.of() : Map.of(name, value))`; `formParam(null)` не удаляет поле.
 - `BaseTest.find(response, path)` выбирает из JsonPath по полному GPath: `null` — пропуск; `response.get(path)` отдаёт значение как есть. Ошибка GPath — ошибка теста.
-  На помощниках `HttpFilter` проверяет HTTP/errorCode, `success` вызывается явно в тесте; схема — только у целевой ручки.
+  У помощников `success` вызывается явно в тесте. У целевой ручки строгая схема покрывает признаки отказа.
 - `BaseTest` после `Config.setEnv` передаёт в `Session.open` ключ `@Login` или null; Session выбирает `login` по умолчанию и сразу выполняет вход.
   Сессия — ThreadLocal; каждый `Session.open` заменяет её новой. `loginResponse()` возвращает сохранённый ответ, `ticket()` читает его без запроса; в Allure вход — отдельный шаг перед запросами кейса.
-  Автоматического логаута нет по решению пользователя: сервер блокирует его на ручке логаута. Неиспользуемый `Session.close()` удалён.
+  `Session` — record с ответом входа; `Session.close()` после кейса выполняет логаут только при успешном входе. Ошибка поглощается в этом же методе; HTTP-запрос остаётся в Allure, тест не падает.
+  `CURRENT` и контур очищаются в `finally` после кейса. `Config.setEnv(null)` очищает контур.
   Явный `Session.current().logout()` сохранён для контрактного теста логаута; после выхода ticket не обновляется.
-- `SchemaDraft` при любом запуске сразу после каждого успешного ответа обновляет `.schema-samples/drafts/schemas/` по накопленным ответам из `.schema-samples/schemas/`; одинаковые тела не дублируются. Ошибки и отказы не сохраняются.
-  В `unexpected/` попадают успешные ответы с нарушением `additionalProperties: false` эталона, включая вложенность, `$ref` и `oneOf`; они не участвуют в генерации. Пропажа required и другие расхождения с эталоном допускаются для уточнения черновика.
+- `SchemaDraft` собирает все успешные ответы независимо от утверждённых схем; ошибки и отказы пропускаются.
+  Образцы — `.schema-samples/schemas/<endpoint>/[<doc_type>/]<uuid>.json`, снимки накопленной схемы — `.schema-samples/drafts/schemas/` с тем же путём и UUID. Одинаковые тела не дублируются.
   `required` — общие поля всех объектов на каждом уровне; типы объединяются, `null` считается присутствием, пустой `required` не создаётся. Форматирование — стандартный Jackson.
-  `-DschemaDraft.skip=true` отключает сбор и генерацию. Вариант send_doc — из последнего prepare_doc: `ThreadLocal<DocType>` очищается после кейса; `capture` синхронизирован для сохранности общей схемы.
-  Нужную готовую схему пользователь переносит в `src/test/resources/schemas`; генератор эталоны не меняет. Отложенная генерация и `main` удалены.
-- Схемы: draft-04, строгие; пустой `required` draft-04 не допускает. Массив без `items` ничего не проверяет
-  (`SchemaDraft` не выводит структуру пустых массивов): `checkResult` в схемах документов —
-  `$ref` на `../../errors/check_failed.json#/properties/checkResult/items` (резолвится из classpath, проверено);
+  Каталог `doc_type` определяется только полем текущего запроса для любой ручки, без enum и переноса типа из prepare_doc. Версии отдельно не выделяются; старые каталоги `<version>.json` пропускаются при чтении образцов.
+  `-DschemaDraft.skip=true` отключает сбор и генерацию; `capture` синхронизирован для сохранности общей схемы.
+  Генератор всегда работает молча: исключения поглощаются, шагов и вложений Allure нет.
+  Нужный снимок пользователь переносит в `src/test/resources/schemas` под именем `<версия>.json`; генератор эталоны не меняет. Отложенная генерация и `main` удалены.
+- Схемы: draft-04, строгие, без `$ref`; структуры встроены, включая элементы `checkResult` и обе ветки истории. Пустой `required` draft-04 не допускает.
+  Массив без `items` ничего не проверяет (`SchemaDraft` не выводит структуру пустых массивов);
   `auth_login` `accounts` и `lastUnreadNewsList` — `maxItems: 0`, пока нет образца с элементами.
 - Потоки: `fixed` 2 в `junit-platform.properties`; классы — `concurrent`, кейсы класса и его `Negatives` — `same_thread`
   (проверено по времени в Allure: внутри класса пересечений 0). pom: версии плагинов закреплены; Allure-результаты чистятся на
   `initialize` (иначе копятся между прогонами).
 - `Config` кэширует каждый используемый `~/.ibmobile/<env>.properties`, `Endpoint` — `versions/<release>.properties` один раз за прогон.
   Общий Config.load читает переданный источник; не определяет тип файла по имени и не выбирает контур.
-  Версии в файле содержат начальный `/` (`AUTH_LOGIN=/9.4`); дополнительный слеш в путях и схемах не добавлять.
+  Базовый путь и версия начинаются с `/` (`/Auth/ticket` и `AUTH_LOGIN=/9.4`). `HttpFilter` сопоставляет полный путь и HTTP-метод.
   Пустые значения удаляются при загрузке; непустые строки, включая пробелы в паролях, сохраняются целиком.
-  Дополнительные логины читаются из кэша. `Config.get` — обязательное значение, `settings()` — свойства текущего контура.
+  Дополнительные логины читаются из кэша; `Config.get` возвращает обязательное значение текущего контура.
   Файлов `resources/env` и старого `secrets.properties` в загрузке нет; ключ URL — `baseurl` в нижнем регистре.
 - `Section` пополняется по мере появления классов — неиспользуемые группы не удалять.
 
@@ -231,16 +234,18 @@ Swagger нет — схемы пишем сами. GitLab CI и связь с Ki
 `AuthTicketTest` 3, `IbCardChargebackStatementTest` 16, `IbFreeFormatStatementTest` 6, `IbOurAccTransferTest` 10,
 `PriorInfoTest` 7, `FullHistoryTest` 12. SendDocTest удалён; prepare_doc проверяется отдельно, отправка доступна как вспомогательный шаг.
 
-Итого: 64 прошли, 1 упал, 2 пропущены. Падает только известный `unknownOperation` — серверный errorCode 2;
-кейс оставлен по решению пользователя. Повторных запусков не было.
+Итого: 63 прошли, 2 упали, 2 пропущены. `unknownOperation` — известный серверный errorCode 2;
+`AuthTicketTest.logout` — errorCode 403 «Превышено допустимое количество запросов» на явном логауте. Оба кейса остаются строгими. Повторных запусков не было.
+Автологаут: 43 шага с ошибкой и trace, из них 41 в успешно прошедших тестах; результаты тестов эти шаги не изменили.
 Отправлено 9 документов: дебетовый перевод — NONE, кредитный перевод и 7 chargeback — SMSPWD.
 Свободная форма сейчас проверяет только prepare_doc. Для SCRETCH на dev нужна активная скретч-карта.
-Allure: 67 результатов; SchemaDraft: 19 черновиков. Аудит Java, 17 утверждённых схем и 3 шаблонов новых ошибок не выявил.
+На этом прогоне, до отключения отчётности SchemaDraft, сбор образцов дал 257 шагов без ошибок. Все 8 ссылок в 17 утверждённых схемах развёрнуты без изменения ограничений.
 
 ## Окружение и подводные камни
 
 - Запуск: `./mvnw -q test [-Dtest=Класс|'Ib*Test']`; итоги — `target/surefire-reports/TEST-*.xml`
   (атрибуты `tests/errors/skipped/failures`); отчёт — `mvnw allure:serve`. Полный прогон ~2–4 мин.
+  `mvnw clean test` удаляет `target`, включая предыдущие XML и classpath-схемы; `.schema-samples` сохраняется.
   `NoHttpResponse` / тайм-аут на dev — сбой соединения, без повторного запуска.
 - `java` из PATH падает (access violation) — запускать `$JAVA_HOME/bin/java`; `jshell` в Git Bash падает.
   Classpath: `mvnw dependency:build-classpath -Dmdep.outputFile=...`.
@@ -262,7 +267,7 @@ Allure: 67 результатов; SchemaDraft: 19 черновиков. Ауд�
 - Классы doc_type проверяют prepare_doc; SendDocTest удалён, send_doc только помощник для отправки документов. AuthTicketTest объединяет логин/логаут.
   Простым URLENC-ручкам отдельные шаблоны не нужны. Переводы и chargeback отправляются через Confirm.send; схема проверяется только у prepare_doc.
 - Один кейс не запускается одновременно на разных контурах; общий doc_content не требует версионирования по контурам. Шаблон ответа — JSON Schema.
-- Негативы — в каждом классе (было: общий `CommonAuthTest`); статические таблицы `Arguments[]` + `@FieldSource` поверх валидного запроса.
+- Негативы — в каждом классе (было: общий `CommonAuthTest`). Параметры кейсов — `Arguments[]` с `@FieldSource`, набор полей формы можно передать как `Map`.
 - `FullHistoryTest`: данные формы — в классе; период и пагинация проверяются отдельными запросами.
 - Allure: верхний уровень — группы функций `Section` (было: «Сервисы»/«Ещё»).
 - Негативные — вложенный класс `@Nested @Negative class Negatives` (мета: `@Story`, `@DisplayName`;
@@ -270,7 +275,7 @@ Allure: 67 результатов; SchemaDraft: 19 черновиков. Ауд�
   `@Story("Негативные")` на каждом методе. Проверено без сети: Epic/Feature, `@ResourceLock` внешнего класса
   действуют, внешний экземпляр (сессия) — свой на каждый тест. Подкласс вместо вложенного — нет: дубль классов.
 - Имена — как у бэка, без сокращений: `docType`, `docContent`, `authMethod`, `authToken`,
-  `errorDesc`, `errorMessage`, `accDeb`/`accCred`. Строки таблиц — `argumentSet(имя, ...)`, без параметра `title`.
+  `errorDesc`, `errorMessage`, `accDeb`/`accCred`. Имя кейса передаётся в `argumentSet`.
 - Локали не задавать; не добавлять проверки ошибочного использования помощников — ошибки роняют тест обычным исключением.
 - Кейсы одной ручки — по очереди, разные ручки — параллельно (решение пользователя: тест живёт в своей сессии,
   на одну ручку — по одному). Через `mode.default=same_thread`, а не `@ResourceLock` на каждом классе.

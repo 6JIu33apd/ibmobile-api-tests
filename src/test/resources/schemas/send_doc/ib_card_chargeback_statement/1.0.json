@@ -76,7 +76,20 @@
     },
     "checkResult" : {
       "type" : "array",
-      "items" : { "$ref" : "../../errors/check_failed.json#/properties/checkResult/items" }
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "priority" : { "type" : "integer" },
+          "badItem" : { "type" : "string" },
+          "type" : { "type" : "string" },
+          "error" : { "type" : "boolean" },
+          "warning" : { "type" : "boolean" },
+          "info" : { "type" : "boolean" },
+          "errorMessage" : { "type" : "string" }
+        },
+        "required" : [ "priority", "type", "error", "warning", "info", "errorMessage" ],
+        "additionalProperties" : false
+      }
     },
     "checkSuccess" : { "type" : "boolean", "enum" : [ true ] },
     "resultCode" : { "type" : "string", "enum" : [ "SUCCESS" ] },

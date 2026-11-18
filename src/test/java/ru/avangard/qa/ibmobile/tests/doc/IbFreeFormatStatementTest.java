@@ -1,7 +1,7 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
-import io.restassured.specification.RequestSpecification;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
@@ -16,18 +16,19 @@ import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.http.ContentType.MULTIPART;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
-import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
+import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
 @ResourceLock("prepared_doc")
 @Epic(Section.STATEMENTS)
 @Feature("Заявление в свободной форме")
 class IbFreeFormatStatementTest extends BaseTest {
     private static final DocType DOC_TYPE = DocType.IB_FREE_FORMAT_STATEMENT;
+    private final RequestSpecification request = given().formParam("doc_type", DOC_TYPE.toString());
+    private final ObjectNode docContent = DocContent.load(DOC_TYPE);
 
     static final Arguments[] FILES = {
             argumentSet("без вложения", List.of()),
@@ -37,18 +38,14 @@ class IbFreeFormatStatementTest extends BaseTest {
     @ParameterizedTest(name = "Заявление в свободной форме {argumentSetName}")
     @FieldSource("FILES")
     void statement(List<String> files) {
-        ObjectNode docContent = DocContent.load(DOC_TYPE);
-        RequestSpecification request = given().contentType(MULTIPART);
         DocContent.attach(request, docContent, files.toArray(String[]::new));
-        Response prepared = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
-        success(prepared);
+        Response prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
         matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
         assertThat(prepared.<String>path("doc.text")).as("текст заявления").isEqualTo(docContent.get("text").asText());
         assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").isEqualTo(files);
     }
 
-    @Nested
-    @Negative
+    @Nested @Negative
     class Negatives {
         static final Arguments[] REJECTIONS = {
                 argumentSet("пустой текст", "text", "", "text", "Заполните текст заявления"),
@@ -60,15 +57,14 @@ class IbFreeFormatStatementTest extends BaseTest {
         @ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")
         @FieldSource("REJECTIONS")
         void rejection(String field, Object value, String badItem, String errorMessage) {
-            rejected(given().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
-                    .formParam("doc_content", DocContent.set(DocContent.load(DOC_TYPE), field, value).toString()).post(PREPARE_DOC.path()), badItem, errorMessage);
+            DocContent.set(docContent, field, value);
+            rejected(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), badItem, errorMessage);
         }
 
         @DisplayName("Подготовка без ticket отклоняется")
         @Test
         void withoutTicket() {
-            error(given().auth().none().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
-                    .formParam("doc_content", DocContent.load(DOC_TYPE).toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
+            error(request.auth().none().formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

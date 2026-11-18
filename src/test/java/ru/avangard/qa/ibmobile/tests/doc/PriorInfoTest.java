@@ -17,9 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
-import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
+import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
-/** Контракт prior_info и наличие данных для документа; структура ответа и схема зависят от doc_type. */
 @Epic(Section.REFS)
 @Feature("Данные для документа")
 class PriorInfoTest extends BaseTest {
@@ -34,26 +33,24 @@ class PriorInfoTest extends BaseTest {
     @FieldSource("DOC_TYPES")
     void priorInfo(DocType docType, String listPath) {
         Response priorInfo = given().formParam("doc_type", docType.toString()).post(PRIOR_INFO.path());
-        success(priorInfo);
         matchesSchema(priorInfo, PRIOR_INFO.schema(docType));
         assertThat(priorInfo.<List<?>>path(listPath)).as(listPath).isNotEmpty();
-        if (docType == DocType.IB_CARD_CHARGEBACK_STATEMENT) {
+        if (docType == DocType.IB_CARD_CHARGEBACK_STATEMENT)
             assertThat(priorInfo.<List<Integer>>path("chargebackReasons.reasonType")).as("причины несогласия")
                     .containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7);
-        }
     }
 
     @Nested @Negative
     class Negatives {
         static final Arguments[] INVALID_CASES = {
-            argumentSet("без doc_type", (Object) null),
-            argumentSet("неизвестный doc_type", "no_such_doc")
+            argumentSet("без doc_type", Map.of()),
+            argumentSet("неизвестный doc_type", Map.of("doc_type", "no_such_doc"))
         };
 
         @ParameterizedTest(name = "Запрос с некорректными параметрами отклоняется ({argumentSetName})")
         @FieldSource("INVALID_CASES")
-        void invalidParameters(Object value) {
-            error(given().formParams(value == null ? Map.of() : Map.of("doc_type", value)).post(PRIOR_INFO.path()), INVALID_PARAMETERS);
+        void invalidParameters(Map<String, String> params) {
+            error(given().formParams(params).post(PRIOR_INFO.path()), INVALID_PARAMETERS);
         }
 
         @DisplayName("Запрос без ticket отклоняется")

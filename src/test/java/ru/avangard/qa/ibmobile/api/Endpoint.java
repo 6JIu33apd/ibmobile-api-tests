@@ -1,29 +1,35 @@
 package ru.avangard.qa.ibmobile.api;
 
-import io.restassured.http.Method;
+import io.restassured.http.*;
 import ru.avangard.qa.ibmobile.config.Config;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Пути и схемы; версии ручек выбираются из файла текущего релиза. */
+import static io.restassured.http.ContentType.*;
+
 public enum Endpoint {
-    AUTH_LOGIN("Auth/ticket", Method.POST),
-    AUTH_LOGOUT("Auth/ticket", Method.DELETE),
-    SEND_CONFIRM_SMS("Auth/send_confirm_sms", Method.POST),
-    CHECK_PASSWORD("Auth/check_password", Method.POST),
-    SHOW_SCRETCH("Auth/show_scretch", Method.POST),
-    ACC_LIST("Statement/acc_list", Method.POST),
-    ACC_DETAILS("Statement/acc_details", Method.POST),
-    FULL_HISTORY("Doc/full_history", Method.POST),
-    PRIOR_INFO("Doc/prior_info", Method.POST),
-    PREPARE_DOC("Doc/prepare_doc", Method.POST),
-    SEND_DOC("Doc/send_doc", Method.POST);
+    AUTH_LOGIN("/Auth/ticket", Method.POST, URLENC),
+    AUTH_LOGOUT("/Auth/ticket", Method.DELETE, URLENC),
+    SEND_CONFIRM_SMS("/Auth/send_confirm_sms", Method.POST, URLENC),
+    CHECK_PASSWORD("/Auth/check_password", Method.POST, URLENC),
+    SHOW_SCRETCH("/Auth/show_scretch", Method.POST, URLENC),
+    ACC_LIST("/Statement/acc_list", Method.POST, URLENC),
+    ACC_DETAILS("/Statement/acc_details", Method.POST, URLENC),
+    FULL_HISTORY("/Doc/full_history", Method.POST, URLENC),
+    PRIOR_INFO("/Doc/prior_info", Method.POST, URLENC),
+    PREPARE_DOC("/Doc/prepare_doc", Method.POST, MULTIPART),
+    SEND_DOC("/Doc/send_doc", Method.POST, URLENC);
 
     private static final Map<String, Properties> VERSIONS = new ConcurrentHashMap<>();
-    public final String basePath;
-    public final Method method;
+    private final String basePath;
+    final Method method;
+    final ContentType contentType;
 
-    Endpoint(String path, Method method) { this.basePath = path; this.method = method; }
+    Endpoint(String path, Method method, ContentType contentType) {
+        this.basePath = path;
+        this.method = method;
+        this.contentType = contentType;
+    }
 
     public String path() { return basePath + version(); }
 

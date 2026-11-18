@@ -15,6 +15,4 @@ public final class Section {
     public static final String SETTINGS = "Настройки";
     /** Справочные ручки: данные для заполнения документов и других запросов. */
     public static final String REFS = "Справочники";
-
-    private Section() {}
 }

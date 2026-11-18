@@ -4,11 +4,9 @@ import io.qameta.allure.*;
 import io.restassured.RestAssured;
 import io.restassured.path.json.JsonPath;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.avangard.qa.ibmobile.api.*;
 import ru.avangard.qa.ibmobile.config.Config;
-import ru.avangard.qa.ibmobile.tools.SchemaDraft;
 
 import java.lang.annotation.*;
 import java.util.Arrays;
@@ -17,7 +15,6 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** Контур, ключ логина и сессия одного кейса. */
-@ExtendWith(SchemaDraft.class)
 public abstract class BaseTest {
     static {
         RestAssured.config = HttpFilter.CONFIG;
@@ -36,9 +33,7 @@ public abstract class BaseTest {
     }
 
     @AfterEach
-    void logout() {
-        Session.current().logout();
-    }
+    void logout() { Session.close(); }
 
     /** GPath выбирает элемент; если его нет, кейс пропускается. */
     protected static <T> T find(JsonPath response, String path) {

@@ -7,8 +7,6 @@ import java.sql.SQLException;
 
 /** Читает одно значение из Oracle контура (db.url, db.user, db.password), открывая соединение на каждый запрос. */
 public final class Db {
-    private Db() {}
-
     /** Выполняет db.smsCodeSql с логином как единственным параметром и возвращает найденный код SMS. */
     public static String smsCode(String login) {
         return queryOne(Config.get("db.smsCodeSql"), login);

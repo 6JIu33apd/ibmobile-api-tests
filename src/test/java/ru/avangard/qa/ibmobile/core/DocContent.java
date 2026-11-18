@@ -12,7 +12,6 @@ import java.net.URLConnection;
 /** Шаблон doc_content, правка полей и вложения до отправки. */
 public final class DocContent {
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private DocContent() {}
 
     public static ObjectNode load(DocType docType) {
         try (var in = DocContent.class.getResourceAsStream("/doc_content/" + docType + ".json")) {
@@ -34,18 +33,14 @@ public final class DocContent {
     }
 
     /** Путь через точку, индексы массива — числа; null удаляет поле или элемент. */
-    public static ObjectNode set(ObjectNode content, String path, Object value) {
+    public static void set(ObjectNode content, String path, Object value) {
         JsonPointer pointer = JsonPointer.compile("/" + path.replace('.', '/'));
-        var parent = content.at(pointer.head());
-        var last = pointer.last();
-        if (parent instanceof ObjectNode object) {
-            if (value == null) object.remove(last.getMatchingProperty());
-            else object.set(last.getMatchingProperty(), MAPPER.valueToTree(value));
-        } else {
-            ArrayNode array = (ArrayNode) parent;
-            if (value == null) array.remove(last.getMatchingIndex());
-            else array.set(last.getMatchingIndex(), MAPPER.valueToTree(value));
+        switch (content.at(pointer.head())) {
+            case ObjectNode object when value == null -> object.remove(pointer.last().getMatchingProperty());
+            case ObjectNode object -> object.set(pointer.last().getMatchingProperty(), MAPPER.valueToTree(value));
+            case ArrayNode array when value == null -> array.remove(pointer.last().getMatchingIndex());
+            case ArrayNode array -> array.set(pointer.last().getMatchingIndex(), MAPPER.valueToTree(value));
+            default -> throw new IllegalArgumentException(path);
         }
-        return content;
     }
 }

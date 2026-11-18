@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.FULL_HISTORY;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
-import static ru.avangard.qa.ibmobile.api.ResponseChecks.*;
+import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
 @Epic(Section.HISTORY)
 @Feature("Полная история операций")
@@ -32,20 +32,19 @@ class FullHistoryTest extends BaseTest {
     @Test
     void history() {
         Response response = given().formParams(PAGE).post(FULL_HISTORY.path());
-        success(response);
         matchesSchema(response, FULL_HISTORY.schema());
         assertThat(response.<List<?>>path("history")).isNotEmpty();
     }
 
+    static final Arguments[] DIRECTIONS = {Arguments.of("1"), Arguments.of("2")};
+
     @ParameterizedTest(name = "Все типы операций за период: направление {0}")
-    @ValueSource(strings = {"1", "2"})
+    @FieldSource("DIRECTIONS")
     void byDirection(String direction) {
         Response response = given().formParams(DATES).formParam("doc_type", DOC_TYPES)
                 .formParam("debit_or_credit", direction).post(FULL_HISTORY.path());
-        success(response);
         matchesSchema(response, FULL_HISTORY.schema());
-        assertThat(response.<List<Map<String, Object>>>path("history")).isNotEmpty().allSatisfy(operation ->
-                assertThat(operation).containsKey("srcType").containsEntry("debitOrCredit", direction));
+        assertThat(response.<List<String>>path("history.debitOrCredit")).isNotEmpty().containsOnly(direction);
     }
 
     @DisplayName("Несколько типов операций: количество соответствует limit")
@@ -53,7 +52,6 @@ class FullHistoryTest extends BaseTest {
     void severalDocTypes() {
         List<String> docTypes = List.of("ib_pay_rub", "income_rub");
         Response response = given().formParams(PAGE).formParam("doc_type", docTypes).post(FULL_HISTORY.path());
-        success(response);
         matchesSchema(response, FULL_HISTORY.schema());
         assertThat(response.<List<?>>path("history")).hasSize((Integer) PAGE.get("limit"));
         assertThat(response.<List<String>>path("history.srcType")).isSubsetOf(docTypes);
@@ -62,30 +60,29 @@ class FullHistoryTest extends BaseTest {
     @Nested @Negative
     class Negatives {
         static final Arguments[] INVALID_CASES = {
-            argumentSet("без периода и страницы", Map.of("method", "full")),
-            argumentSet("без date_from", Map.of("method", "full", "date_to", DATES.get("date_to"))),
-            argumentSet("без date_to", Map.of("method", "full", "date_from", DATES.get("date_from"))),
-            argumentSet("без offset", Map.of("method", "full", "limit", PAGE.get("limit"))),
-            argumentSet("без limit", Map.of("method", "full", "offset", PAGE.get("offset"))),
-            argumentSet("даты в обратном порядке", Map.of("method", "full", "date_from", DATES.get("date_to"), "date_to", DATES.get("date_from")))
+            argumentSet("без периода и страницы", Map.of()),
+            argumentSet("без date_from", Map.of("date_to", DATES.get("date_to"))),
+            argumentSet("без date_to", Map.of("date_from", DATES.get("date_from"))),
+            argumentSet("без offset", Map.of("limit", PAGE.get("limit"))),
+            argumentSet("без limit", Map.of("offset", PAGE.get("offset"))),
+            argumentSet("даты в обратном порядке", Map.of("date_from", DATES.get("date_to"), "date_to", DATES.get("date_from")))
         };
 
         @ParameterizedTest(name = "Некорректная выборка истории отклоняется ({argumentSetName})")
         @FieldSource("INVALID_CASES")
         void invalidParameters(Map<String, Object> params) {
-            error(given().formParams(params).post(FULL_HISTORY.path()), INVALID_PARAMETERS);
+            error(given().formParam("method", "full").formParams(params).post(FULL_HISTORY.path()), INVALID_PARAMETERS);
         }
 
-        @DisplayName("Запрос без ticket отклоняется")
-        @Test
-        void withoutTicket() {
-            error(given().auth().none().formParams(PAGE).post(FULL_HISTORY.path()), AUTHORIZATION_REQUIRED);
-        }
+        static final Arguments[] INVALID_TICKETS = {
+            argumentSet("Запрос без ticket отклоняется", Map.of()),
+            argumentSet("Запрос с несуществующим ticket отклоняется", Map.of("ticket", "invalid_ticket"))
+        };
 
-        @DisplayName("Запрос с несуществующим ticket отклоняется")
-        @Test
-        void unknownTicket() {
-            error(given().formParam("ticket", "invalid_ticket").formParams(PAGE).post(FULL_HISTORY.path()), AUTHORIZATION_REQUIRED);
+        @ParameterizedTest(name = "{argumentSetName}")
+        @FieldSource("INVALID_TICKETS")
+        void invalidTicket(Map<String, String> params) {
+            error(given().auth().none().formParams(PAGE).formParams(params).post(FULL_HISTORY.path()), AUTHORIZATION_REQUIRED);
         }
     }
 }

@@ -59,7 +59,7 @@ mvnw allure:serve                    # отчёт
 src/test/java/ru/avangard/qa/ibmobile/
   config/   Config                            настройки контура и логины
   api/      Endpoint, DocType, HttpFilter,    ручки, типы документов, транспорт, проверки ответа,
-            ResponseChecks, ErrorCode           допустимые ошибки
+            ResponseCheck, ErrorCode            допустимые ошибки
   core/     BaseTest (Login, PreProd, Prod, Negative) база тестов и вложенные аннотации
             Session                             сессия кейса
             DocContent, Confirm, Db             тело документа, подтверждение и чтение БД
@@ -87,7 +87,7 @@ src/test/resources/
 `Config.get("password")` читает ключ текущего контура без префиксов и преобразований.
 `Config` кэширует файлы контуров, `Endpoint` — файлы версий API по релизу. Общий `Config.load` только читает указанный источник в UTF-8.
 Каждый используемый файл загружается один раз за прогон; дополнительные логины берутся из кэша. Неиспользуемые контуры не загружаются.
-`Config.settings()` возвращает закэшированные настройки текущего контура; `Config.get` проверяет обязательное значение.
+`Config.get` читает обязательное значение из закэшированных настроек текущего контура.
 Отсутствие файла контура — ошибка конфигурации. Старый `secrets.properties` не используется.
 Пустые и пробельные значения удаляются при загрузке; обращение к обязательному отсутствующему ключу роняет тест.
 Значения не обрезаются, чтобы сохранять значимые пробелы в паролях.
@@ -102,22 +102,21 @@ src/test/resources/
 контура теста. Схема ищется по той же версии: `schemas/acc_list/4.0.json`. Поэтому `release` переключает и пути,
 и схемы — у каждого контура свой релиз. Новый релиз — копия файла версий с правкой изменившихся строк, новые схемы
 для них и `release=` в файле контура.
-Значение версии включает начальный `/`: `AUTH_LOGIN=/9.4`. `Endpoint` соединяет его с путём ручки или схемы без добавочного слеша.
+Путь ручки и версия начинаются с `/`. Например, `Endpoint.path()` возвращает `/Auth/ticket/9.4` и совпадает с путём запроса в Rest Assured.
 
 ## Запрос и ответ
 
 ```java
 Response response = given().formParam("account", account).post(ACC_DETAILS.path());
-success(response);
 matchesSchema(response, ACC_DETAILS.schema());
 String actualAccount = response.path("accBalanceDetails[0].account");
 ```
 
-- `given`, `formParam`, `post`/`delete` — нативный Rest Assured; проверки — статические методы `ResponseChecks`.
-- `HttpFilter` подключается в `BaseTest`: добавляет `uid`, ticket сессии и base URL, сохраняет ответ и проверяет HTTP/errorCode.
+- `given`, `formParam`, `post`/`delete` — нативный Rest Assured; проверки — статические методы `ResponseCheck`.
+- `HttpFilter` добавляет `uid`, ticket и base URL, записывает HTTP-обмен и проверяет статус. Допустимость `errorCode` проверяет `ResponseCheck`.
   Явный `formParam("ticket", ...)` сохраняется. Запрос логина и `given().auth().none()` автоматический ticket не получают.
 - `null` в `formParam` не означает пропуск: в таблицах — `formParams(value == null ? Map.of() : Map.of(name, value))`.
-- Тело — URLENC; для multipart явно задаётся `.contentType(MULTIPART)`.
+- Тип тела задан в `Endpoint`. `HttpFilter` применяет его при отправке. Для `prepare_doc` это multipart, для остальных текущих ручек — URLENC.
 - Коллекция в `formParam` — несколько одноимённых параметров (например, два `secure` в `send_doc`).
 - Каждый запрос — шаг Allure с телом запроса и ответа; у multipart отдельное вложение «Параметры запроса»:
   карта «ключ=значение»; файлы описаны в `doc_content.attachmentsList`.
@@ -144,33 +143,34 @@ String actualAccount = response.path("accBalanceDetails[0].account");
 
 ## Схемы
 
-- Строгие, JSON Schema draft-04, `additionalProperties: false`; обязательные поля в `required`, остальные — опциональные.
-- Подтверждённые значения статусов закреплены в схемах; `success(response)` также отсекает отказы проверок и подтверждения.
+- Строгие, JSON Schema draft-04, без `$ref`: структуры встроены в схему. `additionalProperties: false`; обязательные поля в `required`, остальные — опциональные.
+- Подтверждённые значения статусов закреплены в схемах; `success(response)` отсекает отказы там, где схема не проверяется.
 - Один `endpoint.schema(DocType...)`: `schema()` для обычных ручек, `schema(docType)` для prepare_doc/prior_info/send_doc. `matchesSchema(response, path)` проверяет схему; отсутствие схемы роняет тест.
-- `SchemaDraft` включён по умолчанию при любом запуске. Каждый успешный ответ сразу обновляет готовую схему в `.schema-samples/drafts/schemas/`, до проверок теста.
-  Исходные ответы накапливаются в `.schema-samples/schemas/`; одинаковые тела не дублируются. Каталог `.schema-samples` не попадает в git и переживает `mvn clean`.
-  Ошибки и отказы не сохраняются и не участвуют в генерации.
-- Если ответ нарушает `additionalProperties: false` утверждённой схемы, он сохраняется в `.schema-samples/unexpected/` и не уточняет черновик. Проверяются вложенные объекты, массивы, `$ref` и ветки `oneOf`.
-  Другие расхождения с эталоном не блокируют генерацию: пропавшее обязательное поле может стать опциональным в черновике; типы объединяются.
+- `SchemaDraft` включён по умолчанию и собирает все успешные ответы независимо от утверждённых схем. Ошибки и отказы пропускаются.
+  Ответ сохраняется в `.schema-samples/schemas/<endpoint>/[<doc_type>/]<uuid>.json`, накопленная схема — в `.schema-samples/drafts/schemas/` по тому же пути и с тем же UUID.
+  Подкаталог `doc_type` добавляется только при наличии этого поля в текущем запросе, для любой ручки. Версии отдельно не выделяются; одинаковые тела не дублируются.
+  Генератор работает молча: не пишет в Allure и не роняет тест при сбое. Каталог `.schema-samples` не попадает в git и переживает `mvn clean`.
 - Обязательны поля, присутствующие во всех накопленных образцах, включая вложенные объекты и элементы массивов. По одному образцу опциональность не определить; `null` считается присутствующим значением.
   Структура пустого массива станет известна после образца с элементами. Форматирование — стандартный Jackson.
-- `-DschemaDraft.skip=true` отключает сохранение ответов и обновление схем.
-- Нужную схему из `.schema-samples/drafts/schemas/` автор тестов проверяет и вручную переносит в `src/test/resources/schemas`. Генератор эталоны не меняет; контрактные проверки используют только их.
-- Ручная `schemas/errors/error.json` общая для технических ошибок (`oneOf`): 1/4/1000 — только `errorCode`/`errorDesc`; 5 — ещё обязательные `resultCode=FAILED`/`resultMessage`.
-  Бизнес-отказы — ручная `check_failed.json`; общие части документов: `"$ref": "../../errors/check_failed.json#/properties/checkResult/items"`.
+- `-DschemaDraft.skip=true` отключает сохранение ответов и обновление схем. Подготовка, отправка и проверка запроса от этого флага не зависят.
+- Нужный снимок `<uuid>.json` автор тестов проверяет и вручную переносит в `src/test/resources/schemas` под именем `<версия>.json`. Генератор эталоны не меняет; контрактные проверки используют только их.
+- Ручная `schemas/errors/error.json` требует `errorCode` и `errorDesc`; `resultCode=FAILED` и `resultMessage` опциональны.
+  Бизнес-отказы — ручная `check_failed.json`; описание элементов `checkResult` встроено в схемы документов.
 
 ## Сессии и логины
 
 Одна сессия — на один тест: одна ручка разным пользователям отдаёт разные данные.
 
 - Все классы наследуют `BaseTest`: после выбора контура он вызывает `Session.open(ключ)`, выполняя вход и заменяя сессию в ThreadLocal.
-  Вход выполняется до тела теста и отображается отдельным шагом Allure; запросы кейса используют готовый ticket. Автоматического логаута после кейса нет.
+  Вход выполняется до тела теста и отображается отдельным шагом Allure; запросы кейса используют готовый ticket. После кейса `Session.close()` выполняет логаут только при успешном входе.
+  Ошибка автоматического логаута не роняет тест; HTTP-запрос остаётся в Allure. Контекст сессии и контура очищается в любом случае.
 - По умолчанию ключ — `login`. `@Login("loginextra")` на методе выбирает другой ключ того же файла.
   В аннотации указывается имя ключа, а не реальный логин; новые ключи не требуют enum или правок конфигурационного кода.
 - `password`, `sms`, `scretch` общие для всех логинов контура. Коды требуются только для выбранного способа подтверждения.
-  Нет выбранного логина — тест пропускается; отсутствие файла или другого нужного значения роняет тест.
+  Логин и остальные нужные значения обязательны; ошибка авторизации роняет тест, автоматического логаута после неё нет.
 - `given().auth().none()` отключает автоматический ticket только для этого запроса: так пишутся публичные запросы и негативы без ticket.
-- `Session.current().loginResponse()` возвращает сохранённый ответ входа, `ticket()` — текущий ticket без запроса; `logout()` выполняет выход. После выхода ticket не обновляется.
+- `Session.current().loginResponse()` возвращает сохранённый ответ входа, `ticket()` — текущий ticket без запроса; явный `logout()` выполняет выход со строгой проверкой. После выхода ticket не обновляется.
+- `mvnw clean test` удаляет `target` перед прогоном; накопленные ответы и готовые схемы в `.schema-samples` сохраняются.
 - Неверный пароль реальных профилей не тестируем (блокировка); негатив логина — несуществующий логин.
 - Смена логина/пароля тестируется отдельными логинами: ticket становится недействительным, исходные данные восстанавливает сам тест.
 
@@ -183,9 +183,9 @@ prepare_doc вызывается через нативный `given()`, отпр
 Вызов send_doc добавляется явно в нужный позитив; отдельного контрактного класса для этой ручки пока нет.
 
 ```java
-Response prepared = given().contentType(MULTIPART)
-        .formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent().toString()).post(PREPARE_DOC.path());
-success(prepared);
+var request = given().formParam("doc_type", DOC_TYPE.toString());
+var docContent = DocContent.load(DOC_TYPE);
+Response prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
 matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
 success(Confirm.send("NONE", prepared));
 ```
@@ -212,8 +212,7 @@ success(Confirm.send("NONE", prepared));
 ObjectNode docContent = DocContent.load(DOC_TYPE);
 ```
 
-Статические параметры — таблица `Arguments[]` в самом тестовом классе и `@FieldSource`:
-`argumentSet(имя кейса, аргументы...)`. Для вычисляемых параметров можно использовать обычный `@MethodSource`.
+Параметры задаются через `@FieldSource` и `Arguments[]`. Имя кейса указывается в `argumentSet`, набор полей формы можно передать как `Map`.
 `DocContent.set(docContent, путь, значение)` меняет поле, `null` — убирает его; значение — строка, число, список или Map.
 Путь — через точку на любую глубину, индекс массива — число: `"amount"`, `"payer.address.city"`, `"attachmentsList.0.filename"`.
 Списки и Map остаются JSON-деревом, доступным по вложенным путям.
@@ -227,24 +226,24 @@ static final Arguments[] REJECTIONS = {
 @ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")
 @FieldSource("REJECTIONS")
 void rejection(String field, Object value, String badItem, String errorMessage) {
-    Response response = given().contentType(MULTIPART).formParam("doc_type", DOC_TYPE.toString())
-            .formParam("doc_content", DocContent.set(DocContent.load(DOC_TYPE), field, value).toString()).post(PREPARE_DOC.path());
-    rejected(response, badItem, errorMessage);
+    DocContent.set(docContent, field, value);
+    var request = given().formParam("doc_type", DOC_TYPE.toString());
+    rejected(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), badItem, errorMessage);
 }
 ```
 
 Кейс со сложной логикой (несколько полей, свои проверки) — отдельный метод. Для простых URLENC-ручек достаточно явных параметров;
 отдельные шаблоны с парой полей не нужны. Шаблоном ответа служит JSON Schema, эталонный JSON не хранится.
 
-`DocContent.attach` до отправки добавляет в нативный запрос файлы из classpath `files/` и заполняет `attachmentsList`.
-Без файлов исходное описание сохраняется; транспорт не меняет содержимое документа:
+`DocContent.attach` добавляет файлы из classpath `files/` в запрос и обновляет `attachmentsList`. Без файлов исходное описание сохраняется.
+Параметры формы добавляются после вложений, чтобы сериализовать готовый `doc_content`.
 
 ```java
 ObjectNode docContent = DocContent.load(DOC_TYPE);
-RequestSpecification request = given().contentType(MULTIPART);
+var request = given().formParam("doc_type", DOC_TYPE.toString());
 DocContent.attach(request, docContent, "image.png");
-Response response = request.formParam("doc_type", DOC_TYPE.toString()).formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
-success(response);
+Response response = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
+matchesSchema(response, PREPARE_DOC.schema(DOC_TYPE));
 ```
 
 Схема документа — вариант схемы ручки: `matchesSchema(response, PREPARE_DOC.schema(DOC_TYPE))` → `schemas/prepare_doc/<doc_type>/8.1.json`.
@@ -252,7 +251,7 @@ success(response);
 ## Данные из других ручек
 
 Тестовые данные (номера счетов и т. п.) берутся из ответов других ручек, а не хранятся в репозитории.
-Ответ помощника хранится в локальном `JsonPath`; запрос и проверка его успеха задаются в тесте:
+Ответ помощника хранится в локальном `JsonPath` или в поле экземпляра, если общий запрос выполняется в `@BeforeEach`. В обоих случаях HTTP-шаг виден в Allure.
 
 ```java
 var accList = success(given().post(ACC_LIST.path()));
@@ -263,7 +262,7 @@ List<?> accounts = accList.get("accounts.account");
 Выборка — полный GPath (Groovy) из теста: условия и нужное поле.
 `BaseTest.find(response, path)` пропускает кейс при `null`; `response.get(path)` позволяет обработать `null` в тесте. Ошибки GPath роняют тест.
 
-`HttpFilter` проверяет HTTP/errorCode, успех помощника — явный `success(...)` в тесте; схема — только у целевой ручки.
+Успех помощника проверяется явным `success(...)` в тесте. Схема проверяется у целевой ручки.
 Отдельных классов данных и общих таблиц кейсов нет.
 
 ## Отчёт Allure
@@ -284,11 +283,11 @@ List<?> accounts = accList.get("accounts.account");
 | Порядок | Что | Ручка (`AccDetailsTest`) | Документ (`IbOurAccTransferTest`) |
 |---|---|---|---|
 | 1 | позитивные кейсы | `details(condition)` | `transfer(accDebCondition, authMethod)` |
-| 2 | `@Nested @Negative class Negatives`, в нём — таблица `invalidParameters` → `error(response, INVALID_PARAMETERS)` | параметр запроса → значение | поле документа → значение |
+| 2 | `@Nested @Negative class Negatives` → `error(response, INVALID_PARAMETERS)` | `withoutAccount()`, `invalidAccount()` | `invalidParameters(amount)` |
 | 3 | таблица `rejections` → `rejected(response, badItem, errorMessage)` | — | поле документа → значение |
 | 4 | особые кейсы — отдельные методы | — | `sameAccount()` |
 | 5 | `withoutTicket`: запрос с `.auth().none()` → `error(response, AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
-| 6 | данные по умолчанию | условие выбора счёта | `docContent(condition)` |
+| 6 | данные по умолчанию | условие выбора счёта | шаблон и счета из `acc_list` |
 
 Кейс таблицы меняет одно значение в валидном запросе, `null` — убирает его:
 у ручки — `.formParams(value == null ? Map.of() : Map.of(name, value))`, у документа — `DocContent.set(docContent, field, value)`.
@@ -298,7 +297,7 @@ List<?> accounts = accList.get("accounts.account");
 
 1. Константа в `api/Endpoint` (путь без версии) и версия в `versions/*.properties`.
 2. Класс `tests/<домен>/<Ручка>Test extends BaseTest` с `@Epic` и `@Feature`. Кейсы — параметры.
-3. Позитивные кейсы: `success(response)`, `matchesSchema(response, endpoint.schema())` (для документа — `schema(DOC_TYPE)`), проверка ключевых значений.
+3. Позитивные кейсы: `matchesSchema(response, endpoint.schema())` (для документа — `schema(DOC_TYPE)`), проверка ключевых значений.
 4. Негативные кейсы — обязательно, во вложенном `@Nested @Negative class Negatives`: бизнес-отказы `rejected(...)`,
    технические `error(...)`. Аннотация даёт Story «Негативные» всем его тестам.
 5. Документы — константа в `api/DocType`, шаблон `doc_content/<doc_type>.json`, в классе `DOC_TYPE`
@@ -315,7 +314,6 @@ class AccListTest extends BaseTest {
     @Test
     void accList() {
         Response response = given().post(ACC_LIST.path());
-        success(response);
         matchesSchema(response, ACC_LIST.schema());
         assertThat(response.<List<String>>path("accounts.account.code")).isNotEmpty().doesNotHaveDuplicates();
     }

@@ -1,0 +1,17 @@
+{
+  "docNum": 12,
+  "SCliInn":"644925094203",
+  "accDeb": "40817810800150910097",
+  "amountDeb": 20.0,
+  "RCliName": "Охота Нафилина",
+  "RCliInn": "",
+  "RBankName": "",
+  "RBankBic": "",
+  "accCred": "",
+  "docDesc": "Перевод собственных средств",
+  "ndPaytype": "0",
+  "incomeCode": "",
+  "incomeCodeDescription": "",
+  "lateCommEnabled": "true",
+  "attachmentsList": []
+}

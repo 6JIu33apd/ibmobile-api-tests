@@ -1,7 +1,6 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.qameta.allure.*;
@@ -9,18 +8,16 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
-import ru.avangard.qa.ibmobile.api.DocType;
+import ru.avangard.qa.ibmobile.api.*;
 import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
-import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
 @ResourceLock("prepared_doc")
@@ -53,13 +50,15 @@ class IbCardChargebackStatementTest extends BaseTest {
     void statement(int reasonType) {
         DocContent.set(docContent, "reasonType", reasonType);
         DocContent.attach(request, docContent, FILE);
-        Response prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
-        matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
-        assertThat(prepared.jsonPath().getLong("doc.cardId")).as("карта").isEqualTo(docContent.get("cardId").asLong());
-        assertThat(prepared.<Integer>path("doc.reasonType")).as("причина").isEqualTo(reasonType);
-        assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).as("вложения").containsExactly(FILE);
-        assertThat(prepared.<List<Number>>path("doc.opersList")).as("операции").extracting(Number::longValue)
-                .containsExactlyElementsOf(docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList());
+        var prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
+            Allure.step("Карта совпадает с запросом", () -> assertThat(prepared.jsonPath().getLong("doc.cardId")).isEqualTo(docContent.get("cardId").asLong()));
+            Allure.step("Причина несогласия совпадает с запросом", () -> assertThat(prepared.<Integer>path("doc.reasonType")).isEqualTo(reasonType));
+            Allure.step("В заявлении одно вложение " + FILE, () -> assertThat(prepared.<List<String>>path("doc.attachmentsList.filename")).containsExactly(FILE));
+            Allure.step("Список операций совпадает с запросом", () -> assertThat(prepared.<List<Number>>path("doc.opersList")).extracting(Number::longValue)
+                    .containsExactlyElementsOf(docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList()));
+        });
         success(Confirm.send("SMSPWD", prepared));
     }
 
@@ -89,15 +88,14 @@ class IbCardChargebackStatementTest extends BaseTest {
         void unknownOperation() {
             DocContent.set(docContent, "opersList", List.of(1));
             DocContent.attach(request, docContent, FILE);
-            assertThat(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()).<String>path("resultCode"))
-                    .as("отказ проверок").isEqualTo("FAILED");
+            matchesSchema(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), "schemas/errors/check_failed.json");
         }
 
         @DisplayName("Подготовка без ticket отклоняется")
         @Test
         void withoutTicket() {
             DocContent.attach(request, docContent, FILE);
-            error(request.auth().none().formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
+            error(request.auth().none().formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), ErrorCode.AUTHORIZATION_REQUIRED);
         }
     }
 }

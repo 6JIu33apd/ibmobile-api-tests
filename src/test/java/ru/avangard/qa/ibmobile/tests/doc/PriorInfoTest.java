@@ -1,6 +1,5 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
-import io.restassured.response.Response;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,8 +8,7 @@ import ru.avangard.qa.ibmobile.api.DocType;
 import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,12 +30,14 @@ class PriorInfoTest extends BaseTest {
     @ParameterizedTest(name = "Данные для документа ({argumentSetName})")
     @FieldSource("DOC_TYPES")
     void priorInfo(DocType docType, String listPath) {
-        Response priorInfo = given().formParam("doc_type", docType.toString()).post(PRIOR_INFO.path());
-        matchesSchema(priorInfo, PRIOR_INFO.schema(docType));
-        assertThat(priorInfo.<List<?>>path(listPath)).as(listPath).isNotEmpty();
-        if (docType == DocType.IB_CARD_CHARGEBACK_STATEMENT)
-            assertThat(priorInfo.<List<Integer>>path("chargebackReasons.reasonType")).as("причины несогласия")
-                    .containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7);
+        var priorInfo = given().formParam("doc_type", docType.toString()).post(PRIOR_INFO.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(priorInfo, PRIOR_INFO.schema(docType));
+            Allure.step("Список " + listPath + " заполнен", () -> assertThat(priorInfo.<List<?>>path(listPath)).isNotEmpty());
+            if (docType == DocType.IB_CARD_CHARGEBACK_STATEMENT)
+                Allure.step("Причины несогласия с операцией — от 1 до 7", () ->
+                        assertThat(priorInfo.<List<Integer>>path("chargebackReasons.reasonType")).containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7));
+        });
     }
 
     @Nested @Negative

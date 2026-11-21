@@ -1,6 +1,5 @@
 package ru.avangard.qa.ibmobile.tests.doc;
 
-import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.qameta.allure.*;
@@ -41,12 +40,15 @@ class IbOurAccTransferTest extends BaseTest {
     @FieldSource("TRANSFERS")
     void transfer(String accDebCondition, String authMethod) {
         setAccounts(accDebCondition);
-        DocContent.set(docContent, "amount", BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2));
-        Response prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
-        matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
-        assertThat(prepared.jsonPath().getObject("doc.amount", BigDecimal.class)).as("сумма").isEqualByComparingTo(docContent.get("amount").decimalValue());
-        assertThat(prepared.<String>path("doc.accDeb")).as("счёт списания").isEqualTo(docContent.get("accDeb").asText());
-        assertThat(prepared.<String>path("doc.accCred")).as("счёт зачисления").isEqualTo(docContent.get("accCred").asText());
+        var amount = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2);
+        docContent.put("amount", amount);
+        var prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
+            Allure.step("Сумма перевода", () -> assertThat(prepared.jsonPath().getObject("doc.amount", BigDecimal.class)).isEqualByComparingTo(amount));
+            Allure.step("Счёт списания", () -> assertThat(prepared.<String>path("doc.accDeb")).isEqualTo(docContent.get("accDeb").asText()));
+            Allure.step("Счёт зачисления", () -> assertThat(prepared.<String>path("doc.accCred")).isEqualTo(docContent.get("accCred").asText()));
+        });
         success(Confirm.send(authMethod, prepared));
     }
 

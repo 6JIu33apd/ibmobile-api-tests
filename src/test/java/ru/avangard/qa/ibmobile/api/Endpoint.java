@@ -18,6 +18,9 @@ public enum Endpoint {
     FULL_HISTORY("/Doc/full_history", Method.POST, URLENC),
     PRIOR_INFO("/Doc/prior_info", Method.POST, URLENC),
     PREPARE_DOC("/Doc/prepare_doc", Method.POST, MULTIPART),
+    IB_INSIDE_PAY_RUB_ATTACHMENTS("/Refs/inside_rur_transfer_attachments", Method.POST, URLENC),
+    IB_PAY_RUB_ATTACHMENTS("/Refs/outside_rur_transfer_attachments", Method.POST, URLENC),
+    GKU_BY_INN("/Doc/rp_gku_supplier_by_inn", Method.POST, URLENC),
     SEND_DOC("/Doc/send_doc", Method.POST, URLENC);
 
     private static final Map<String, Properties> VERSIONS = new ConcurrentHashMap<>();
@@ -39,6 +42,6 @@ public enum Endpoint {
 
     private String version() {
         return VERSIONS.computeIfAbsent(Config.get("release"), release ->
-                Config.load(Endpoint.class.getResource("/versions/" + release + ".properties").toString())).getProperty(name());
+                Config.load(Objects.requireNonNull(Endpoint.class.getResource("/versions/" + release + ".properties")).toString())).getProperty(name());
     }
 }

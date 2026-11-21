@@ -40,8 +40,10 @@ class AccDetailsTest extends BaseTest {
     void details(String condition) {
         String account = find(accList, "accounts.account.findAll { " + condition + " }.max { it.otb }?.code");
         var accDetails = given().formParam("account", account).post(ACC_DETAILS.path());
-        matchesSchema(accDetails, ACC_DETAILS.schema());
-        assertThat(accDetails.<String>path("accBalanceDetails[0].account")).as("счёт").isEqualTo(account);
+        Allure.step("Проверки", () -> {
+            matchesSchema(accDetails, ACC_DETAILS.schema());
+            Allure.step("Номер счёта совпадает с запросом", () -> assertThat(accDetails.<String>path("accBalanceDetails[0].account")).isEqualTo(account));
+        });
     }
 
     @Nested @Negative

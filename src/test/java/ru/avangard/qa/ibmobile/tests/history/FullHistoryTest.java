@@ -1,6 +1,5 @@
 package ru.avangard.qa.ibmobile.tests.history;
 
-import io.restassured.response.Response;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,9 +30,11 @@ class FullHistoryTest extends BaseTest {
     @DisplayName("История с обязательными параметрами")
     @Test
     void history() {
-        Response response = given().formParams(PAGE).post(FULL_HISTORY.path());
-        matchesSchema(response, FULL_HISTORY.schema());
-        assertThat(response.<List<?>>path("history")).isNotEmpty();
+        var response = given().formParams(PAGE).post(FULL_HISTORY.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(response, FULL_HISTORY.schema());
+            Allure.step("В истории есть операции", () -> assertThat(response.<List<?>>path("history")).isNotEmpty());
+        });
     }
 
     static final Arguments[] DIRECTIONS = {Arguments.of("1"), Arguments.of("2")};
@@ -41,20 +42,24 @@ class FullHistoryTest extends BaseTest {
     @ParameterizedTest(name = "Все типы операций за период: направление {0}")
     @FieldSource("DIRECTIONS")
     void byDirection(String direction) {
-        Response response = given().formParams(DATES).formParam("doc_type", DOC_TYPES)
+        var response = given().formParams(DATES).formParam("doc_type", DOC_TYPES)
                 .formParam("debit_or_credit", direction).post(FULL_HISTORY.path());
-        matchesSchema(response, FULL_HISTORY.schema());
-        assertThat(response.<List<String>>path("history.debitOrCredit")).isNotEmpty().containsOnly(direction);
+        Allure.step("Проверки", () -> {
+            matchesSchema(response, FULL_HISTORY.schema());
+            Allure.step("Направление операций " + direction, () -> assertThat(response.<List<String>>path("history.debitOrCredit")).isNotEmpty().containsOnly(direction));
+        });
     }
 
     @DisplayName("Несколько типов операций: количество соответствует limit")
     @Test
     void severalDocTypes() {
         List<String> docTypes = List.of("ib_pay_rub", "income_rub");
-        Response response = given().formParams(PAGE).formParam("doc_type", docTypes).post(FULL_HISTORY.path());
-        matchesSchema(response, FULL_HISTORY.schema());
-        assertThat(response.<List<?>>path("history")).hasSize((Integer) PAGE.get("limit"));
-        assertThat(response.<List<String>>path("history.srcType")).isSubsetOf(docTypes);
+        var response = given().formParams(PAGE).formParam("doc_type", docTypes).post(FULL_HISTORY.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(response, FULL_HISTORY.schema());
+            Allure.step("Количество операций равно limit", () -> assertThat(response.<List<?>>path("history")).hasSize((Integer) PAGE.get("limit")));
+            Allure.step("Типы операций входят в " + docTypes, () -> assertThat(response.<List<String>>path("history.srcType")).isSubsetOf(docTypes));
+        });
     }
 
     @Nested @Negative

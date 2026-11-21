@@ -1,6 +1,5 @@
 package ru.avangard.qa.ibmobile.tests.accounts;
 
-import io.restassured.response.Response;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,9 +22,12 @@ class AccListTest extends BaseTest {
     @DisplayName("Счета клиента с уникальными 20-значными номерами")
     @Test
     void accList() {
-        Response response = given().post(ACC_LIST.path());
-        matchesSchema(response, ACC_LIST.schema());
-        assertThat(response.<List<String>>path("accounts.account.code")).as("номера счетов").isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}"));
+        var response = given().post(ACC_LIST.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(response, ACC_LIST.schema());
+            Allure.step("Список содержит уникальные 20-значные номера счетов", () -> assertThat(response.<List<String>>path("accounts.account.code"))
+                    .isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}")));
+        });
     }
 
     @Nested @Negative

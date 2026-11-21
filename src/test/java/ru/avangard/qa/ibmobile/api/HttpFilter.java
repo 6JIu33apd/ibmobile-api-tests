@@ -18,7 +18,6 @@ import java.util.*;
 import static io.restassured.http.ContentType.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.fail;
-import static ru.avangard.qa.ibmobile.api.Endpoint.AUTH_LOGIN;
 
 public final class HttpFilter implements Filter {
     public static final RestAssuredConfig CONFIG = RestAssuredConfig.config().httpClient(HttpClientConfig.httpClientConfig().connectTimeout(Duration.ofSeconds(10)).readTimeout(Duration.ofMinutes(2))).jsonConfig(JsonConfig.jsonConfig().numberReturnType(NumberReturnType.BIG_DECIMAL));
@@ -33,7 +32,6 @@ public final class HttpFilter implements Filter {
             Response response = new AllureRestAssured().filter(request, responseSpec, context);
             if (response.statusCode() != 200)
                 fail("Ошибка сервера: HTTP %s, %s %s: %s", response.statusCode(), request.getMethod(), request.getUserDefinedPath(), response.asString());
-            ResponseCheck.checkErrorCode(response);
             SchemaDraft.capture(endpoint, docType, response);
             return response;
         });
@@ -41,7 +39,7 @@ public final class HttpFilter implements Filter {
 
     private static void prepare(FilterableRequestSpecification request, Endpoint endpoint) {
         request.baseUri(Config.get("baseurl")).formParam("uid", "594874414557102");
-        if (endpoint != AUTH_LOGIN && !(request.getAuthenticationScheme() instanceof ExplicitNoAuthScheme) && !request.getFormParams().containsKey("ticket"))
+        if (endpoint != Endpoint.AUTH_LOGIN && !(request.getAuthenticationScheme() instanceof ExplicitNoAuthScheme) && !request.getFormParams().containsKey("ticket"))
             request.formParam("ticket", Session.current().ticket());
         if (endpoint.contentType == MULTIPART) {
             request.contentType(MULTIPART);

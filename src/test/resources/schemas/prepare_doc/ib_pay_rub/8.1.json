@@ -1,0 +1,323 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "responseCode" : {
+      "type" : "integer"
+    },
+    "authMethod" : {
+      "type" : "string"
+    },
+    "scretchInit" : {
+      "type" : "object",
+      "properties" : {
+        "responseCode" : {
+          "type" : "integer"
+        },
+        "resultCode" : {
+          "type" : "string"
+        },
+        "resultMessage" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "responseCode", "resultCode", "resultMessage" ],
+      "additionalProperties" : false
+    },
+    "smsInit" : {
+      "type" : "object",
+      "properties" : {
+        "responseCode" : {
+          "type" : "integer"
+        },
+        "phone" : {
+          "type" : "string"
+        },
+        "startDate" : {
+          "type" : "string"
+        },
+        "resultCode" : {
+          "type" : "string"
+        },
+        "resultMessage" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "responseCode", "phone", "startDate", "resultCode", "resultMessage" ],
+      "additionalProperties" : false
+    },
+    "qrInit" : {
+      "type" : "object",
+      "properties" : {
+        "responseCode" : {
+          "type" : "integer"
+        },
+        "longTicketStatus" : {
+          "type" : "string"
+        },
+        "pk" : {
+          "type" : "string"
+        },
+        "qrLink" : {
+          "type" : "string"
+        },
+        "resultCode" : {
+          "type" : "string"
+        },
+        "resultMessage" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "responseCode", "longTicketStatus", "pk", "qrLink", "resultCode", "resultMessage" ],
+      "additionalProperties" : false
+    },
+    "doc" : {
+      "type" : "object",
+      "properties" : {
+        "accDeb" : {
+          "type" : "string"
+        },
+        "accCred" : {
+          "type" : "string"
+        },
+        "amountDeb" : {
+          "type" : "number"
+        },
+        "docNum" : {
+          "type" : "integer"
+        },
+        "docDate" : {
+          "type" : "string"
+        },
+        "docQueue" : {
+          "type" : "integer"
+        },
+        "docSendTypeCode" : {
+          "type" : "string"
+        },
+        "docDesc" : {
+          "type" : "string"
+        },
+        "incomeCode" : {
+          "type" : "string"
+        },
+        "incomeCodeDescription" : {
+          "type" : "string"
+        },
+        "ndPaytype" : {
+          "type" : "string"
+        },
+        "lateCommEnabled" : {
+          "type" : "boolean"
+        },
+        "rpayCorrAcc" : {
+          "type" : "string"
+        },
+        "rbankBic" : {
+          "type" : "string"
+        },
+        "scliName" : {
+          "type" : "string"
+        },
+        "rcliName" : {
+          "type" : "string"
+        },
+        "attachments" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "filename" : {
+                "type" : "string"
+              },
+              "filesize" : {
+                "type" : "integer"
+              },
+              "md5" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "filename", "filesize", "md5" ],
+            "additionalProperties" : false
+          }
+        },
+        "scliInn" : {
+          "type" : "string"
+        },
+        "rcliInn" : {
+          "type" : "string"
+        },
+        "docDateStr" : {
+          "type" : "string"
+        },
+        "docRoClfStr" : {
+          "type" : "string"
+        },
+        "docSendType" : {
+          "type" : "string"
+        },
+        "rbankAccCode" : {
+          "type" : "string"
+        },
+        "rbankName" : {
+          "type" : "string"
+        },
+        "attRequired" : {
+          "type" : "boolean"
+        },
+        "attachmentsExist" : {
+          "type" : "boolean"
+        },
+        "totalAmount" : {
+          "type" : "number"
+        },
+        "totalAmountDeb" : {
+          "type" : "number"
+        },
+        "totalAmountCurr" : {
+          "type" : "string"
+        },
+        "commDebExist" : {
+          "type" : "boolean"
+        },
+        "srcType" : {
+          "type" : "string"
+        },
+        "docTypeDesc" : {
+          "type" : "string"
+        },
+        "SCliInn" : {
+          "type" : "string"
+        },
+        "SCliName" : {
+          "type" : "string"
+        },
+        "RBankAccCode" : {
+          "type" : "string"
+        },
+        "RBankBic" : {
+          "type" : "string"
+        },
+        "RBankName" : {
+          "type" : "string"
+        },
+        "RCliInn" : {
+          "type" : "string"
+        },
+        "RCliName" : {
+          "type" : "string"
+        },
+        "availableForPrinting" : {
+          "type" : "string"
+        },
+        "docType" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "accDeb", "accCred", "amountDeb", "docNum", "docDate", "docQueue", "docSendTypeCode", "docDesc", "incomeCode", "incomeCodeDescription", "ndPaytype", "lateCommEnabled", "rpayCorrAcc", "rbankBic", "scliName", "rcliName", "attachments", "scliInn", "rcliInn", "docDateStr", "docRoClfStr", "docSendType", "rbankAccCode", "rbankName", "attRequired", "attachmentsExist", "totalAmount", "totalAmountDeb", "totalAmountCurr", "commDebExist", "srcType", "docTypeDesc", "SCliInn", "SCliName", "RBankAccCode", "RBankBic", "RBankName", "RCliInn", "RCliName", "availableForPrinting", "docType" ],
+      "additionalProperties" : false
+    },
+    "authMethods" : {
+      "type" : "array",
+      "items" : {
+        "type" : "string"
+      }
+    },
+    "checkSuccess" : {
+      "type" : "boolean"
+    },
+    "checkResult" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "priority" : {
+            "type" : "integer"
+          },
+          "badItem" : {
+            "type" : "string"
+          },
+          "error" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "warning" : {
+            "type" : "boolean"
+          },
+          "info" : {
+            "type" : "boolean"
+          },
+          "errorMessage" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "priority", "badItem", "error", "type", "warning", "info", "errorMessage" ],
+        "additionalProperties" : false
+      }
+    },
+    "payInfo" : {
+      "type" : "object",
+      "properties" : {
+        "debInfo" : {
+          "type" : "object",
+          "properties" : {
+            "currency" : {
+              "type" : "string"
+            },
+            "upperCurrency" : {
+              "type" : "string"
+            },
+            "otb" : {
+              "type" : "number"
+            },
+            "otbAfter" : {
+              "type" : "number"
+            },
+            "amount" : {
+              "type" : "number"
+            },
+            "totalAmount" : {
+              "type" : "number"
+            },
+            "comms" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "comm" : {
+                    "type" : "number"
+                  },
+                  "currency" : {
+                    "type" : "string"
+                  },
+                  "commTypeName" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "comm", "currency", "commTypeName" ],
+                "additionalProperties" : false
+              }
+            },
+            "currencyDeb" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "currency", "upperCurrency", "otb", "otbAfter", "amount", "totalAmount", "comms", "currencyDeb" ],
+          "additionalProperties" : false
+        }
+      },
+      "required" : [ "debInfo" ],
+      "additionalProperties" : false
+    },
+    "resultCode" : {
+      "type" : "string"
+    },
+    "resultMessage" : {
+      "type" : "string"
+    }
+  },
+  "required" : [ "responseCode", "authMethod", "scretchInit", "smsInit", "qrInit", "doc", "authMethods", "checkSuccess", "checkResult", "payInfo", "resultCode", "resultMessage" ],
+  "additionalProperties" : false
+}

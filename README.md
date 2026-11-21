@@ -6,7 +6,7 @@
 Что проверяем:
 - **контракт** — ответы ручек сверяются со строгими JSON-схемами (лишнее поле — ошибка);
 - **бизнес-логику** — ключевые значения ответа и бизнес-отказы проверок с точным текстом;
-- **ошибки сервера** — HTTP не 200 или недопустимый errorCode роняет любой тест.
+- **ошибки сервера** — фильтр требует HTTP 200, тест сверяет тело ответа с ожидаемым результатом.
 
 Чего не проверяем: остатки, сквозные e2e-сценарии, мусорный ввод на каждое поле.
 
@@ -25,14 +25,14 @@ sms=...
 scretch=...
 ```
 
-3. Запуск:
+3. Из корня проекта в PowerShell используйте `.\mvnw.cmd`, в Git Bash — `./mvnw`.
 
-```
-mvnw test                            # тесты dev (без @PreProd / @Prod)
-mvnw test -Dtest=AccListTest         # один класс
-mvnw test -Pall-envs                 # ещё и тесты preprod и prod, каждый на своём контуре
-mvnw test -Pall-envs -Dgroups=prod   # только тесты prod
-mvnw allure:serve                    # отчёт
+```powershell
+.\mvnw.cmd test                            # тесты dev (без @PreProd / @Prod)
+.\mvnw.cmd test -Dtest=AccListTest         # один класс
+.\mvnw.cmd test -Pall-envs                 # ещё и тесты preprod и prod, каждый на своём контуре
+.\mvnw.cmd test -Pall-envs -Dgroups=prod   # только тесты prod
+.\mvnw.cmd allure:serve                    # отчёт
 ```
 
 Из IDEA тесты запускаются как обычные JUnit-тесты, фильтр pom там не действует: запущенный тест идёт на свой контур.
@@ -113,24 +113,24 @@ String actualAccount = response.path("accBalanceDetails[0].account");
 ```
 
 - `given`, `formParam`, `post`/`delete` — нативный Rest Assured; проверки — статические методы `ResponseCheck`.
-- `HttpFilter` добавляет `uid`, ticket и base URL, записывает HTTP-обмен и проверяет статус. Допустимость `errorCode` проверяет `ResponseCheck`.
+- `HttpFilter` добавляет `uid`, ticket и base URL, записывает HTTP-обмен и требует статус 200.
   Явный `formParam("ticket", ...)` сохраняется. Запрос логина и `given().auth().none()` автоматический ticket не получают.
 - `null` в `formParam` не означает пропуск: в таблицах — `formParams(value == null ? Map.of() : Map.of(name, value))`.
 - Тип тела задан в `Endpoint`. `HttpFilter` применяет его при отправке. Для `prepare_doc` это multipart, для остальных текущих ручек — URLENC.
-- Коллекция в `formParam` — несколько одноимённых параметров (например, два `secure` в `send_doc`).
+- В URLENC коллекция в `formParam` передаётся как несколько одноимённых параметров (например, два `secure` в `send_doc`).
 - Каждый запрос — шаг Allure с телом запроса и ответа; у multipart отдельное вложение «Параметры запроса»:
   карта «ключ=значение»; файлы описаны в `doc_content.attachmentsList`.
 - Дробные числа ответа — `BigDecimal` (Rest Assured по умолчанию читает их как `Float` с потерей точности).
 
 ### Ошибки
 
-Бэк отвечает HTTP 200 и на успех, и на отказ. Различаем:
+При HTTP 200 фильтр возвращает ответ тесту, в том числе при `errorCode=2`. Проверку выбирает тест по ожидаемому результату.
 
 | Вид | Как выглядит | Проверка |
 |---|---|---|
-| Бизнес-отказ (эталон) | `responseCode -1`, `resultCode FAILED`, `checkResult[{badItem, errorMessage}]` | `rejected(response, badItem, errorMessage)` + схема `errors/check_failed.json` |
-| Техническая ошибка | `errorCode` + `errorDesc` | `error(response, ErrorCode.X)` + общая схема `errors/error.json` |
-| Ошибка сервера | HTTP не 200, `errorCode` вне `ErrorCode` (например, 2 `internal_server_error`) | роняет **любой** тест: «Ошибка сервера: …» |
+| Бизнес-отказ | `responseCode=-1`, `resultCode=FAILED`, `checkResult` | `rejected(response, badItem, errorMessage)` сверяет причину отказа и проверяет схему. Когда важен только формат отказа, достаточно `matchesSchema(response, "schemas/errors/check_failed.json")` |
+| Техническая ошибка | `errorCode` и `errorDesc` | `error(response, ErrorCode.X)` сверяет оба поля с ожидаемой ошибкой и проверяет `schemas/errors/error.json` |
+| Ошибка HTTP | Статус отличается от 200 | `HttpFilter` завершает HTTP-шаг с ошибкой |
 
 Допустимые технические ошибки — только из `ErrorCode`:
 
@@ -146,12 +146,12 @@ String actualAccount = response.path("accBalanceDetails[0].account");
 - Строгие, JSON Schema draft-04, без `$ref`: структуры встроены в схему. `additionalProperties: false`; обязательные поля в `required`, остальные — опциональные.
 - Подтверждённые значения статусов закреплены в схемах; `success(response)` отсекает отказы там, где схема не проверяется.
 - Один `endpoint.schema(DocType...)`: `schema()` для обычных ручек, `schema(docType)` для prepare_doc/prior_info/send_doc. `matchesSchema(response, path)` проверяет схему; отсутствие схемы роняет тест.
-- `SchemaDraft` включён по умолчанию и собирает все успешные ответы независимо от утверждённых схем. Ошибки и отказы пропускаются.
+- `SchemaDraft` включён по умолчанию и собирает успешные JSON-объекты и массивы при запуске одного теста, группы или всего набора, даже при наличии утверждённой схемы.
   Ответ сохраняется в `.schema-samples/schemas/<endpoint>/[<doc_type>/]<uuid>.json`, накопленная схема — в `.schema-samples/drafts/schemas/` по тому же пути и с тем же UUID.
-  Подкаталог `doc_type` добавляется только при наличии этого поля в текущем запросе, для любой ручки. Версии отдельно не выделяются; одинаковые тела не дублируются.
+  Подкаталог задаёт `doc_type` текущего запроса. В `send_doc` передаётся `secure` без `doc_type`, поэтому образцы лежат прямо в `schemas/send_doc/`. Одинаковые тела получают один UUID.
   Генератор работает молча: не пишет в Allure и не роняет тест при сбое. Каталог `.schema-samples` не попадает в git и переживает `mvn clean`.
 - Обязательны поля, присутствующие во всех накопленных образцах, включая вложенные объекты и элементы массивов. По одному образцу опциональность не определить; `null` считается присутствующим значением.
-  Структура пустого массива станет известна после образца с элементами. Форматирование — стандартный Jackson.
+  Образец `{}` делает поля корневого объекта опциональными в черновике. Пустое HTTP-тело, ошибки и отказы пропускаются. Структура массива уточняется, когда появляется образец с элементами.
 - `-DschemaDraft.skip=true` отключает сохранение ответов и обновление схем. Подготовка, отправка и проверка запроса от этого флага не зависят.
 - Нужный снимок `<uuid>.json` автор тестов проверяет и вручную переносит в `src/test/resources/schemas` под именем `<версия>.json`. Генератор эталоны не меняет; контрактные проверки используют только их.
 - Ручная `schemas/errors/error.json` требует `errorCode` и `errorDesc`; `resultCode=FAILED` и `resultMessage` опциональны.
@@ -236,7 +236,7 @@ void rejection(String field, Object value, String badItem, String errorMessage) 
 отдельные шаблоны с парой полей не нужны. Шаблоном ответа служит JSON Schema, эталонный JSON не хранится.
 
 `DocContent.attach` добавляет файлы из classpath `files/` в запрос и обновляет `attachmentsList`. Без файлов исходное описание сохраняется.
-Параметры формы добавляются после вложений, чтобы сериализовать готовый `doc_content`.
+Добавляйте `doc_content` в форму после `attach`, чтобы в запрос попал окончательный список вложений.
 
 ```java
 ObjectNode docContent = DocContent.load(DOC_TYPE);
@@ -271,7 +271,7 @@ List<?> accounts = accList.get("accounts.account");
 - `@Feature` — ручка или документ.
 - Story «Негативные» — негативные кейсы внутри фичи: вложенный класс `@Nested @Negative class Negatives`.
 - Имя кейса — русское имя JUnit: `@DisplayName` либо `name` у `@ParameterizedTest` с `{argumentSetName}` / `{0}`.
-- Результаты прошлых прогонов очищаются перед каждым запуском.
+- Maven очищает `target/allure-results` на фазе `initialize` перед тестами.
 
 ## Тестовый класс
 
@@ -283,7 +283,7 @@ List<?> accounts = accList.get("accounts.account");
 | Порядок | Что | Ручка (`AccDetailsTest`) | Документ (`IbOurAccTransferTest`) |
 |---|---|---|---|
 | 1 | позитивные кейсы | `details(condition)` | `transfer(accDebCondition, authMethod)` |
-| 2 | `@Nested @Negative class Negatives` → `error(response, INVALID_PARAMETERS)` | `withoutAccount()`, `invalidAccount()` | `invalidParameters(amount)` |
+| 2 | `@Nested @Negative class Negatives` → `error(response, INVALID_PARAMETERS)` | `invalidAccount(params)` с пустой картой или некорректным `account` | `invalidParameters(amount)` |
 | 3 | таблица `rejections` → `rejected(response, badItem, errorMessage)` | — | поле документа → значение |
 | 4 | особые кейсы — отдельные методы | — | `sameAccount()` |
 | 5 | `withoutTicket`: запрос с `.auth().none()` → `error(response, AUTHORIZATION_REQUIRED)` | `withoutTicket()` | `withoutTicket()` |
@@ -295,14 +295,14 @@ List<?> accounts = accList.get("accounts.account");
 
 ## Новая ручка
 
-1. Константа в `api/Endpoint` (путь без версии) и версия в `versions/*.properties`.
+1. В `api/Endpoint` укажите базовый путь с начальным `/`, HTTP-метод и тип тела. В `versions/<релиз>.properties` добавьте версию с начальным `/`.
 2. Класс `tests/<домен>/<Ручка>Test extends BaseTest` с `@Epic` и `@Feature`. Кейсы — параметры.
 3. Позитивные кейсы: `matchesSchema(response, endpoint.schema())` (для документа — `schema(DOC_TYPE)`), проверка ключевых значений.
 4. Негативные кейсы — обязательно, во вложенном `@Nested @Negative class Negatives`: бизнес-отказы `rejected(...)`,
    технические `error(...)`. Аннотация даёт Story «Негативные» всем его тестам.
 5. Документы — константа в `api/DocType`, шаблон `doc_content/<doc_type>.json`, в классе `DOC_TYPE`
    и `@ResourceLock("prepared_doc")` на классе.
-6. Прогнать: без схемы тест упадёт; образцы и черновик появятся автоматически → проверить и утвердить схему → прогнать снова.
+6. Запустите кейс с включённым сбором. На успешном ответе черновик сохраняется до вызова `matchesSchema`. Пока утверждённой схемы нет в ресурсах, эта проверка падает при каждом запуске. Проверьте черновик, перенесите его в ресурсы под именем версии и повторите тест.
 7. Не dev — `@PreProd` / `@Prod`; на prod только то, что безопасно под своим логином.
 
 ```java

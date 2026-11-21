@@ -9,10 +9,9 @@ import ru.avangard.qa.ibmobile.api.*;
 import ru.avangard.qa.ibmobile.config.Config;
 
 import java.lang.annotation.*;
-import java.util.Arrays;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.abort;
 
 /** Контур, ключ логина и сессия одного кейса. */
 public abstract class BaseTest {
@@ -26,7 +25,7 @@ public abstract class BaseTest {
         Allure.getLifecycle().updateTest(result -> result.setName(testInfo.getDisplayName()));
         var method = testInfo.getTestMethod().orElseThrow();
         var annotations = Stream.of(method, method.getDeclaringClass(), getClass())
-                .flatMap(element -> Arrays.stream(element.getAnnotations())).map(Annotation::annotationType).toList();
+                .flatMap(element -> Stream.of(element.getAnnotations())).map(Annotation::annotationType).toList();
         Config.setEnv(annotations.contains(Prod.class) ? "prod" : annotations.contains(PreProd.class) ? "preprod" : "dev");
         Login login = method.getAnnotation(Login.class);
         Session.open(login != null ? login.value() : null);
@@ -38,8 +37,7 @@ public abstract class BaseTest {
     /** GPath выбирает элемент; если его нет, кейс пропускается. */
     protected static <T> T find(JsonPath response, String path) {
         T value = response.get(path);
-        assumeTrue(value != null, "Нет данных: " + path);
-        return value;
+        return value != null ? value : abort("Нет данных: " + path);
     }
 
     @Retention(RetentionPolicy.RUNTIME)

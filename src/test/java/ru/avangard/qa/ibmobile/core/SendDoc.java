@@ -2,18 +2,19 @@ package ru.avangard.qa.ibmobile.core;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import io.restassured.response.Response;
+import ru.avangard.qa.ibmobile.api.DocType;
 import ru.avangard.qa.ibmobile.config.Config;
 
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
-import static ru.avangard.qa.ibmobile.api.ResponseCheck.success;
+import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
 /** Подтверждает и отправляет документ способом, выбранным в тесте. */
-public final class Confirm {
-    public static Response send(String method, Response prepared) {
-        return given().formParam("secure", switch (method) {
+public final class SendDoc {
+    public static void send(DocType docType, String method, Response prepared) {
+        Response response = given().formParam("secure", switch (method) {
             case "NONE" -> List.of(secureString(method, prepared.path("noneAuthInit.code")));
             case "SCRETCH" -> {
                 success(given().post(SHOW_SCRETCH.path()));
@@ -27,6 +28,7 @@ public final class Confirm {
             }
             default -> throw new IllegalArgumentException(method);
         }).post(SEND_DOC.path());
+        matchesSchema(response, SEND_DOC.schema(docType));
     }
 
     private static String secureString(String method, String value) {

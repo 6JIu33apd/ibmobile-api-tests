@@ -30,13 +30,13 @@ class IbCardChargebackStatementTest extends BaseTest {
     private final ObjectNode docContent = DocContent.load(DOC_TYPE);
 
     static final Arguments[] CHARGEBACK_REASONS = {
-        argumentSet("не согласен с суммой списания", 1),
-        argumentSet("не совершал операцию", 2),
-        argumentSet("сумма списана дважды", 3),
-        argumentSet("возврат товара не зачислен", 4),
-        argumentSet("товар не доставлен или услуга не оказана", 5),
-        argumentSet("оплачено другим способом", 6),
-        argumentSet("иное", 7)
+            argumentSet("не согласен с суммой списания", 1),
+            argumentSet("не совершал операцию", 2),
+            argumentSet("сумма списана дважды", 3),
+            argumentSet("возврат товара не зачислен", 4),
+            argumentSet("товар не доставлен или услуга не оказана", 5),
+            argumentSet("оплачено другим способом", 6),
+            argumentSet("иное", 7)
     };
 
     @BeforeEach
@@ -59,20 +59,21 @@ class IbCardChargebackStatementTest extends BaseTest {
             Allure.step("Список операций совпадает с запросом", () -> assertThat(prepared.<List<Number>>path("doc.opersList")).extracting(Number::longValue)
                     .containsExactlyElementsOf(docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList()));
         });
-        success(Confirm.send("SMSPWD", prepared));
+        SendDoc.send(DOC_TYPE, "SMSPWD", prepared);
     }
 
-    @Nested @Negative
+    @Nested
+    @Negative
     class Negatives {
         static final Arguments[] REJECTIONS = {
-            argumentSet("пустое описание", "description", "", "all", "Заполните description", new String[]{FILE}),
-            argumentSet("без описания", "description", null, "all", "Заполните description", new String[]{FILE}),
-            argumentSet("без карты", "cardId", null, "all", "Заполните cardId", new String[]{FILE}),
-            argumentSet("пустой список операций", "opersList", List.of(), "all", "Укажите хотя бы одну операцию", new String[]{FILE}),
-            argumentSet("без списка операций", "opersList", null, "all", "Укажите хотя бы одну операцию", new String[]{FILE}),
-            argumentSet("без вложения", "attachmentsList", List.of(), "all", "Прикрепление документов обязательно", new String[0]),
-            argumentSet("вложение без файла", "attachmentsList", List.of(Map.of("filename", FILE, "contentType", "image/png")),
-                "lobFile", "Ошибка обработки файла-вложения", new String[0])
+                argumentSet("пустое описание", "description", "", "all", "Заполните description", new String[]{FILE}),
+                argumentSet("без описания", "description", null, "all", "Заполните description", new String[]{FILE}),
+                argumentSet("без карты", "cardId", null, "all", "Заполните cardId", new String[]{FILE}),
+                argumentSet("пустой список операций", "opersList", List.of(), "all", "Укажите хотя бы одну операцию", new String[]{FILE}),
+                argumentSet("без списка операций", "opersList", null, "all", "Укажите хотя бы одну операцию", new String[]{FILE}),
+                argumentSet("без вложения", "attachmentsList", List.of(), "all", "Прикрепление документов обязательно", new String[0]),
+                argumentSet("вложение без файла", "attachmentsList", List.of(Map.of("filename", FILE, "contentType", "image/png")),
+                        "lobFile", "Ошибка обработки файла-вложения", new String[0])
         };
 
         @ParameterizedTest(name = "Заявление отклоняется проверками ({argumentSetName})")

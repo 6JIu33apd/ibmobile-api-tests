@@ -148,7 +148,7 @@ String actualAccount = response.path("accBalanceDetails[0].account");
 - Один `endpoint.schema(DocType...)`: `schema()` для обычных ручек, `schema(docType)` для prepare_doc/prior_info/send_doc. `matchesSchema(response, path)` проверяет схему; отсутствие схемы роняет тест.
 - `SchemaDraft` включён по умолчанию и собирает успешные JSON-объекты и массивы при запуске одного теста, группы или всего набора, даже при наличии утверждённой схемы.
   Ответ сохраняется в `.schema-samples/schemas/<endpoint>/[<doc_type>/]<uuid>.json`, накопленная схема — в `.schema-samples/drafts/schemas/` по тому же пути и с тем же UUID.
-  Подкаталог задаёт `doc_type` текущего запроса. В `send_doc` передаётся `secure` без `doc_type`, поэтому образцы лежат прямо в `schemas/send_doc/`. Одинаковые тела получают один UUID.
+  Для `prepare_doc` и `prior_info` подкаталог задаёт `doc_type` из формы, для `send_doc` — аргумент `docType` в `Confirm.send`. Одинаковые тела получают один UUID.
   Генератор работает молча: не пишет в Allure и не роняет тест при сбое. Каталог `.schema-samples` не попадает в git и переживает `mvn clean`.
 - Обязательны поля, присутствующие во всех накопленных образцах, включая вложенные объекты и элементы массивов. По одному образцу опциональность не определить; `null` считается присутствующим значением.
   Образец `{}` делает поля корневого объекта опциональными в черновике. Пустое HTTP-тело, ошибки и отказы пропускаются. Структура массива уточняется, когда появляется образец с элементами.
@@ -180,23 +180,23 @@ prepare_doc вызывается через нативный `given()`, отпр
 Тип документа — константа enum `api/DocType`; в тестовом классе — `private static final DocType DOC_TYPE = DocType.X`.
 Значение `doc_type` — имя константы в нижнем регистре; по нему же ищутся шаблон и схемы документа.
 `DocContent` готовит тело и вложения, `Confirm.send` подтверждает и отправляет документ выбранным в тесте способом.
-Вызов send_doc добавляется явно в нужный позитив; отдельного контрактного класса для этой ручки пока нет.
+В сценариях с отправкой тест вызывает `Confirm.send` после проверок ответа `prepare_doc`.
 
 ```java
 var request = given().formParam("doc_type", DOC_TYPE.toString());
 var docContent = DocContent.load(DOC_TYPE);
 Response prepared = request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path());
 matchesSchema(prepared, PREPARE_DOC.schema(DOC_TYPE));
-success(Confirm.send("NONE", prepared));
+Confirm.send(DOC_TYPE, "NONE", prepared);
 ```
 
-| Способ | Подтверждение перед send_doc в `Confirm.send(method, prepared)` |
+| Способ | Подтверждение перед send_doc в `Confirm.send(docType, method, prepared)` |
 |---|---|
 | `NONE` | `secure` с токеном `noneAuthInit.code` |
 | `SMSPWD` | `check_password/1.1` с паролем входа → `send_confirm_sms/1.1` → два `secure`: SMS с кодом `sms`, PWD с паролем |
 | `SCRETCH` | `show_scretch`, затем `secure` с кодом `scretch` |
 
-- Способ задаётся в кейсе строкой `"NONE"`, `"SMSPWD"` или `"SCRETCH"`; `Confirm.send` возвращает ответ send_doc.
+- Способ задаётся в кейсе строкой `"NONE"`, `"SMSPWD"` или `"SCRETCH"`. После отправки `Confirm.send` проверяет ответ по `SEND_DOC.schema(docType)` и возвращает его.
   `Session` отвечает за вход, ticket и логаут.
   Токены — JSON-строки, повторные `secure` кодирует Rest Assured.
 - Коды читаются из файла текущего контура только для выбранного способа; `NONE` их не требует.
@@ -277,7 +277,7 @@ List<?> accounts = accList.get("accounts.account");
 
 Все классы устроены одинаково: нативный `given()`, явные параметры, `.post(endpoint.path())`, затем отдельные проверки ответа.
 В классе — данные по умолчанию и кейсы, обёрток над запросом нет.
-У `prepare_doc` — класс на `doc_type`; send_doc используется только как вспомогательный запрос для отправки документа.
+Контракты `prepare_doc` и `send_doc` покрывает один тестовый класс на `doc_type`.
 `AuthTicketTest` объединяет связанные контракты логина и логаута.
 
 | Порядок | Что | Ручка (`AccDetailsTest`) | Документ (`IbOurAccTransferTest`) |

@@ -1,0 +1,112 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "type" : "object",
+  "properties" : {
+    "responseCode" : { "type" : "integer", "enum" : [ 1 ] },
+    "secureCheck" : {
+      "type" : "object",
+      "properties" : {
+        "errorExist" : { "type" : "boolean", "enum" : [ false ] }
+      },
+      "required" : [ "errorExist" ],
+      "additionalProperties" : false
+    },
+    "doc" : {
+      "type" : "object",
+      "properties" : {
+        "docId" : { "type" : "integer" },
+        "docDatBnk" : { "type" : "string" },
+        "commDeb" : { "type" : "number" },
+        "accDeb" : { "type" : "string" },
+        "accCred" : { "type" : "string" },
+        "amountDeb" : { "type" : "number" },
+        "docNum" : { "type" : "integer" },
+        "docDate" : { "type" : "string" },
+        "docRoClf" : { "type" : "integer" },
+        "docQueue" : { "type" : "integer" },
+        "docSendTypeCode" : { "type" : "string" },
+        "docDesc" : { "type" : "string" },
+        "incomeCode" : { "type" : "string" },
+        "ndPaytype" : { "type" : "string" },
+        "rpayCorrAcc" : { "type" : "string" },
+        "rbankBic" : { "type" : "string" },
+        "scliName" : { "type" : "string" },
+        "rcliName" : { "type" : "string" },
+        "attachments" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "properties" : {
+              "attachId" : { "type" : "integer" },
+              "filename" : { "type" : "string" },
+              "filesize" : { "type" : "integer" },
+              "md5" : { "type" : "string" }
+            },
+            "required" : [ "attachId", "filename", "filesize", "md5" ],
+            "additionalProperties" : false
+          }
+        },
+        "scliInn" : { "type" : "string" },
+        "rcliInn" : { "type" : "string" },
+        "docDateStr" : { "type" : "string" },
+        "docRoClfStr" : { "type" : "string" },
+        "docSendType" : { "type" : "string" },
+        "rbankAccCode" : { "type" : "string" },
+        "rbankName" : { "type" : "string" },
+        "attRequired" : { "type" : "boolean" },
+        "attachmentsExist" : { "type" : "boolean" },
+        "ibDocStatusDesc" : { "type" : "string" },
+        "totalAmount" : { "type" : "number" },
+        "totalAmountDeb" : { "type" : "number" },
+        "totalAmountCurr" : { "type" : "string" },
+        "commDebExist" : { "type" : "boolean" },
+        "srcId" : { "type" : "integer" },
+        "srcType" : { "type" : "string" },
+        "docTypeDesc" : { "type" : "string" },
+        "docStatusDesc" : { "type" : "string" },
+        "SCliInn" : { "type" : "string" },
+        "SCliName" : { "type" : "string" },
+        "RBankAccCode" : { "type" : "string" },
+        "RBankBic" : { "type" : "string" },
+        "RBankName" : { "type" : "string" },
+        "RCliInn" : { "type" : "string" },
+        "RCliName" : { "type" : "string" },
+        "availableForPrinting" : { "type" : "string" },
+        "docType" : { "type" : "string", "enum" : [ "ib_pay_rub" ] },
+        "docStatus" : { "type" : "string" }
+      },
+      "required" : [
+        "docId", "docDatBnk", "commDeb", "accDeb", "accCred", "amountDeb", "docNum", "docDate",
+        "docRoClf", "docQueue", "docSendTypeCode", "docDesc", "incomeCode", "ndPaytype", "rpayCorrAcc",
+        "rbankBic", "scliName", "rcliName", "attachments", "scliInn", "rcliInn", "docDateStr", "docRoClfStr",
+        "docSendType", "rbankAccCode", "rbankName", "attRequired", "attachmentsExist", "ibDocStatusDesc",
+        "totalAmount", "totalAmountDeb", "totalAmountCurr", "commDebExist", "srcId", "srcType", "docTypeDesc",
+        "docStatusDesc", "SCliInn", "SCliName", "RBankAccCode", "RBankBic", "RBankName", "RCliInn", "RCliName",
+        "availableForPrinting", "docType", "docStatus"
+      ],
+      "additionalProperties" : false
+    },
+    "checkResult" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "priority" : { "type" : "integer" },
+          "badItem" : { "type" : "string" },
+          "type" : { "type" : "string" },
+          "error" : { "type" : "boolean" },
+          "warning" : { "type" : "boolean" },
+          "info" : { "type" : "boolean" },
+          "errorMessage" : { "type" : "string" }
+        },
+        "required" : [ "priority", "badItem", "type", "error", "warning", "info", "errorMessage" ],
+        "additionalProperties" : false
+      }
+    },
+    "checkSuccess" : { "type" : "boolean", "enum" : [ true ] },
+    "resultCode" : { "type" : "string", "enum" : [ "SUCCESS" ] },
+    "resultMessage" : { "type" : "string" }
+  },
+  "required" : [ "responseCode", "secureCheck", "doc", "checkResult", "checkSuccess", "resultCode", "resultMessage" ],
+  "additionalProperties" : false
+}

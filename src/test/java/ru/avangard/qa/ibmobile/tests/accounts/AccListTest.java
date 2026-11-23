@@ -19,13 +19,13 @@ import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 @Epic(Section.ACCOUNTS)
 @Feature("Список счетов")
 class AccListTest extends BaseTest {
-    @DisplayName("Счета клиента с уникальными 20-значными номерами")
+    @DisplayName("Счета с уникальными номерами")
     @Test
     void accList() {
-        var response = given().post(ACC_LIST.path());
+        var accList = given().post(ACC_LIST.path());
         Allure.step("Проверки", () -> {
-            matchesSchema(response, ACC_LIST.schema());
-            Allure.step("Список содержит уникальные 20-значные номера счетов", () -> assertThat(response.<List<String>>path("accounts.account.code"))
+            matchesSchema(accList, ACC_LIST.schema());
+            Allure.step("Список содержит уникальные 20-значные номера счетов", () -> assertThat(accList.<List<String>>path("accounts.account.code"))
                     .isNotEmpty().doesNotHaveDuplicates().allMatch(code -> code.matches("\\d{20}")));
         });
     }
@@ -34,7 +34,7 @@ class AccListTest extends BaseTest {
     class Negatives {
         static final Arguments[] INVALID_TICKETS = {
             argumentSet("Запрос без ticket отклоняется", Map.of()),
-            argumentSet("Запрос с несуществующим ticket отклоняется", Map.of("ticket", "invalid_ticket"))
+            argumentSet("Запрос с несуществующим ticket отклоняется", Map.of("ticket", "D6evIЕBf021р653974IffпNлPgoZhPWDВBTzr7TF"))
         };
 
         @ParameterizedTest(name = "{argumentSetName}")

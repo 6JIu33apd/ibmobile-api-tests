@@ -49,7 +49,7 @@ class IbOurAccTransferTest extends BaseTest {
             Allure.step("Счёт списания", () -> assertThat(prepared.<String>path("doc.accDeb")).isEqualTo(docContent.get("accDeb").asText()));
             Allure.step("Счёт зачисления", () -> assertThat(prepared.<String>path("doc.accCred")).isEqualTo(docContent.get("accCred").asText()));
         });
-        success(Confirm.send(authMethod, prepared));
+        SendDoc.send(DOC_TYPE, authMethod, prepared);
     }
 
     @Nested @Negative

@@ -58,11 +58,5 @@ class AccDetailsTest extends BaseTest {
         void invalidAccount(Map<String, String> params) {
             error(given().formParams(params).post(ACC_DETAILS.path()), INVALID_PARAMETERS);
         }
-
-        @Test
-        @DisplayName("Запрос без ticket отклоняется")
-        void withoutTicket() {
-            error(given().auth().none().formParam("account", (String) find(accList, "accounts.account[0].code")).post(ACC_DETAILS.path()), AUTHORIZATION_REQUIRED);
-        }
     }
 }

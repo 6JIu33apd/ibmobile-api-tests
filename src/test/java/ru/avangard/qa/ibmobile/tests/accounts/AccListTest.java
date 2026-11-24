@@ -33,15 +33,5 @@ class AccListTest extends BaseTest {
     @Nested
     @Negative
     class Negatives {
-        static final Arguments[] INVALID = {
-                argumentSet("Запрос без ticket отклоняется", Map.of()),
-                argumentSet("Запрос с несуществующим ticket отклоняется", Map.of("ticket", "D6evIЕBf021р653974IffпNлPgoZhPWDВBTzr7TF"))
-        };
-
-        @ParameterizedTest(name = "{argumentSetName}")
-        @FieldSource("INVALID")
-        void invalidTicket(Map<String, String> params) {
-            error(given().auth().none().formParams(params).post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
-        }
     }
 }

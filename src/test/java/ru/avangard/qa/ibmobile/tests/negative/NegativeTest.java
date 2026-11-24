@@ -23,7 +23,7 @@ import static ru.avangard.qa.ibmobile.api.ResponseCheck.error;
 
 @Epic(Section.NEGATIVE)
 @Feature("Общие негативные")
-public class BaseNegativeTest extends BaseTest {
+public class NegativeTest extends BaseTest {
 
     static Stream<Endpoint> endpoints() {
         return Arrays.stream(Endpoint.values())

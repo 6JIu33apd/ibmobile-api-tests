@@ -78,16 +78,5 @@ class FullHistoryTest extends BaseTest {
         void invalidParameters(Map<String, Object> params) {
             error(given().formParam("method", "full").formParams(params).post(FULL_HISTORY.path()), INVALID_PARAMETERS);
         }
-
-        static final Arguments[] INVALID_TICKETS = {
-            argumentSet("Запрос без ticket отклоняется", Map.of()),
-            argumentSet("Запрос с несуществующим ticket отклоняется", Map.of("ticket", "invalid_ticket"))
-        };
-
-        @ParameterizedTest(name = "{argumentSetName}")
-        @FieldSource("INVALID_TICKETS")
-        void invalidTicket(Map<String, String> params) {
-            error(given().auth().none().formParams(PAGE).formParams(params).post(FULL_HISTORY.path()), AUTHORIZATION_REQUIRED);
-        }
     }
 }

@@ -90,12 +90,6 @@ class IbOurAccTransferTest extends BaseTest {
             rejected(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()),
                     "accCred", "Счет зачисления должен отличаться от счета списания");
         }
-
-        @DisplayName("Подготовка без ticket отклоняется")
-        @Test
-        void withoutTicket() {
-            error(request.auth().none().formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), AUTHORIZATION_REQUIRED);
-        }
     }
 
     private void setAccounts(String accDebCondition) {

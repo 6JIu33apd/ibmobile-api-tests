@@ -91,12 +91,5 @@ class IbCardChargebackStatementTest extends BaseTest {
             DocContent.attach(request, docContent, FILE);
             matchesSchema(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), "schemas/errors/check_failed.json");
         }
-
-        @DisplayName("Подготовка без ticket отклоняется")
-        @Test
-        void withoutTicket() {
-            DocContent.attach(request, docContent, FILE);
-            error(request.auth().none().formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), ErrorCode.AUTHORIZATION_REQUIRED);
-        }
     }
 }

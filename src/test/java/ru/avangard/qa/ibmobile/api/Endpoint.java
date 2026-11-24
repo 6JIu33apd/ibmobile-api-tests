@@ -42,6 +42,6 @@ public enum Endpoint {
 
     private String version() {
         return VERSIONS.computeIfAbsent(Config.get("release"), release ->
-                Config.load(Objects.requireNonNull(Endpoint.class.getResource("/versions/" + release + ".properties")).toString())).getProperty(name());
+                Config.load(Objects.requireNonNull(Endpoint.class.getResource("/versions/" + release + ".properties")).toString())).getProperty(name(),"");
     }
 }

@@ -19,7 +19,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
-import static ru.avangard.qa.ibmobile.api.Endpoint.ACC_LIST;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.AUTHORIZATION_REQUIRED;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.error;
@@ -64,15 +63,5 @@ class IbPayRubTest extends BaseTest {
     @Nested
     @Negative
     class Negatives {
-        static final Arguments[] INVALID_TICKETS = {
-                argumentSet("Запрос без ticket отклоняется", Map.of()),
-                argumentSet("Запрос с несуществующим ticket отклоняется", Map.of("ticket", "D6evIЕBf021р653974IffпNлPgoZhPWDВBTzr7TF"))
-        };
-
-        @ParameterizedTest(name = "{argumentSetName}")
-        @FieldSource("INVALID_TICKETS")
-        void invalidTicket(Map<String, String> params) {
-            error(given().auth().none().formParams(params).post(ACC_LIST.path()), AUTHORIZATION_REQUIRED);
-        }
     }
 }

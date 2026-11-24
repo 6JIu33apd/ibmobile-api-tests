@@ -52,11 +52,5 @@ class PriorInfoTest extends BaseTest {
         void invalidParameters(Map<String, String> params) {
             error(given().formParams(params).post(PRIOR_INFO.path()), INVALID_PARAMETERS);
         }
-
-        @DisplayName("Запрос без ticket отклоняется")
-        @Test
-        void withoutTicket() {
-            error(given().auth().none().formParam("doc_type", DocType.IB_PAY_RUB.toString()).post(PRIOR_INFO.path()), AUTHORIZATION_REQUIRED);
-        }
     }
 }

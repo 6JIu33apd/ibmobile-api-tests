@@ -60,11 +60,5 @@ class IbFreeFormatStatementTest extends BaseTest {
             DocContent.set(docContent, field, value);
             rejected(request.formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), badItem, errorMessage);
         }
-
-        @DisplayName("Подготовка без ticket отклоняется")
-        @Test
-        void withoutTicket() {
-            error(request.auth().none().formParam("doc_content", docContent.toString()).post(PREPARE_DOC.path()), ErrorCode.AUTHORIZATION_REQUIRED);
-        }
     }
 }

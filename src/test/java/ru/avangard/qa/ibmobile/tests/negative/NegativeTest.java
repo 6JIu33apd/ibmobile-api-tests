@@ -2,6 +2,7 @@ package ru.avangard.qa.ibmobile.tests.negative;
 
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,6 +24,7 @@ import static ru.avangard.qa.ibmobile.api.ResponseCheck.error;
 
 @Epic(Section.NEGATIVE)
 @Feature("Общие негативные")
+@ResourceLock("prepared_doc")
 public class NegativeTest extends BaseTest {
 
     static Stream<Endpoint> endpoints() {
@@ -46,7 +48,7 @@ public class NegativeTest extends BaseTest {
 
     @ParameterizedTest(name = "Запрос {0} с истекшим тикетом отклоняется")
     @MethodSource("endpoints")
-    void expiredTicket(Endpoint endpoint) {
+    void revokedTicket(Endpoint endpoint) {
         String ticket = Session.current().ticket();
         Session.current().logout();
         error(given().auth().none().formParam("ticket", ticket).post(endpoint.path()), SESSION_EXPIRED);

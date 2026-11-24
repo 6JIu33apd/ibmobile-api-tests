@@ -4,6 +4,7 @@ import io.restassured.response.Response;
 import ru.avangard.qa.ibmobile.config.Config;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
@@ -14,6 +15,7 @@ public record Session(Response loginResponse) {
         Response response = given().formParam("login", Config.get(loginKey == null ? "login" : loginKey))
                 .formParam("password", Config.get("password")).post(AUTH_LOGIN.path());
         success(response);
+        assertThat(response.<String>path("ticket")).isNotBlank();
         CURRENT.set(new Session(response));
     }
 

@@ -18,6 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
+import static ru.avangard.qa.ibmobile.api.AuthMethod.SMSPWD;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.matchesSchema;
 
@@ -54,7 +55,7 @@ class IbPayRubTest extends BaseTest {
             Allure.step("Счёт списания", () -> assertThat(prepared.<String>path("doc.accDeb")).isEqualTo(docContent.get("accDeb").asText()));
             Allure.step("Счёт зачисления", () -> assertThat(prepared.<String>path("doc.accCred")).isEqualTo(accCred));
         });
-        SendDoc.send(DOC_TYPE, "SMSPWD", prepared);
+        SendDoc.send(DOC_TYPE, SMSPWD, prepared);
     }
 
     @Nested

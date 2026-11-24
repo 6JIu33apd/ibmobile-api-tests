@@ -19,13 +19,6 @@ class AuthTicketTest extends BaseTest {
         matchesSchema(Session.current().loginResponse(), AUTH_LOGIN.schema());
     }
 
-    @DisplayName("После логаута ticket недействителен")
-    @Test
-    void logout() {
-        matchesSchema(Session.current().logout(), AUTH_LOGOUT.schema());
-        error(given().post(ACC_LIST.path()), SESSION_EXPIRED);
-    }
-
     @Nested @Negative
     class Negatives {
         @DisplayName("Логин несуществующего пользователя отклоняется")

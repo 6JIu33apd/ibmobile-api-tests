@@ -7,6 +7,7 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import ru.avangard.qa.ibmobile.api.AuthMethod;
 import ru.avangard.qa.ibmobile.api.DocType;
 import ru.avangard.qa.ibmobile.core.*;
 import ru.avangard.qa.ibmobile.tests.Section;
@@ -32,13 +33,13 @@ class IbOurAccTransferTest extends BaseTest {
     private final ObjectNode docContent = DocContent.load(DOC_TYPE);
 
     static final Arguments[] TRANSFERS = {
-        argumentSet("с рублёвого дебетового счёта", DEBIT, "NONE"),
-        argumentSet("с рублёвого кредитного счёта", "it.isCredit && it.currency == 'RUR'", "SMSPWD")
+        argumentSet("с рублёвого дебетового счёта", DEBIT, AuthMethod.NONE),
+        argumentSet("с рублёвого кредитного счёта", "it.isCredit && it.currency == 'RUR'", AuthMethod.SMSPWD)
     };
 
     @ParameterizedTest(name = "Перевод между своими счетами {argumentSetName}")
     @FieldSource("TRANSFERS")
-    void transfer(String accDebCondition, String authMethod) {
+    void transfer(String accDebCondition, AuthMethod method) {
         setAccounts(accDebCondition);
         var amount = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2);
         docContent.put("amount", amount);
@@ -49,7 +50,7 @@ class IbOurAccTransferTest extends BaseTest {
             Allure.step("Счёт списания", () -> assertThat(prepared.<String>path("doc.accDeb")).isEqualTo(docContent.get("accDeb").asText()));
             Allure.step("Счёт зачисления", () -> assertThat(prepared.<String>path("doc.accCred")).isEqualTo(docContent.get("accCred").asText()));
         });
-        SendDoc.send(DOC_TYPE, authMethod, prepared);
+        SendDoc.send(DOC_TYPE, method, prepared);
     }
 
     @Nested @Negative

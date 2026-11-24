@@ -39,7 +39,7 @@ src/test/java/ru/avangard/qa/ibmobile/
   api/      Endpoint, DocType, HttpFilter   метаданные API и транспорт
             ResponseCheck, ErrorCode       проверки ответов и ошибки
   core/     BaseTest, Session              жизненный цикл теста и сессии
-            DocContent, Confirm, Db        документы, подтверждение, чтение БД
+            DocContent, SendDoc, Db        документы, подтверждение, чтение БД
   tests/    Section, <домен>/<Ручка>Test     тесты и группы Allure
   tools/    SchemaDraft                    генерация черновиков схем
 src/test/resources/

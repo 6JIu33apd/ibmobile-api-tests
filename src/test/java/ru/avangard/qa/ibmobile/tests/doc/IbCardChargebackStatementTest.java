@@ -59,7 +59,7 @@ class IbCardChargebackStatementTest extends BaseTest {
             Allure.step("Список операций совпадает с запросом", () -> assertThat(prepared.<List<Number>>path("doc.opersList")).extracting(Number::longValue)
                     .containsExactlyElementsOf(docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList()));
         });
-        SendDoc.send(DOC_TYPE, "SMSPWD", prepared);
+        SendDoc.send(DOC_TYPE, AuthMethod.SMSPWD, prepared);
     }
 
     @Nested

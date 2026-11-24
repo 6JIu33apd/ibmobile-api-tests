@@ -22,7 +22,6 @@ import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 @ResourceLock("prepared_doc")
 @Epic(Section.STATEMENTS)
 @Feature("Заявление в свободной форме")
-@BaseTest.PreProd
 class IbFreeFormatStatementTest extends BaseTest {
     private static final DocType DOC_TYPE = DocType.IB_FREE_FORMAT_STATEMENT;
     private final RequestSpecification request = given().formParam("doc_type", DOC_TYPE.toString());

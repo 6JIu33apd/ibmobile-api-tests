@@ -8,7 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-/** Настройки выбранного контура; каждый файл контура читается один раз. */
+/**
+ * Настройки выбранного контура; каждый файл контура читается один раз.
+ */
 public final class Config {
     private static final ThreadLocal<String> ENV = new ThreadLocal<>();
     private static final Map<String, Properties> CACHE = new ConcurrentHashMap<>();
@@ -19,10 +21,11 @@ public final class Config {
     }
 
     public static String get(String key) {
-        return Objects.requireNonNull(CACHE.computeIfAbsent(ENV.get(), env ->
-                        load(Path.of(System.getProperty("user.home"), ".ibmobile", env + ".properties")
+        String env = Objects.requireNonNullElse(ENV.get(), "dev");
+        return Objects.requireNonNull(CACHE.computeIfAbsent(env, name ->
+                        load(Path.of(System.getProperty("user.home"), ".ibmobile", name + ".properties")
                                 .toUri().toString())).getProperty(key),
-                "Отсутствует параметр " + key + " для контура " + ENV.get());
+                "Отсутствует параметр " + key + " для контура " + env);
     }
 
     public static Properties load(String source) {
@@ -31,6 +34,8 @@ public final class Config {
             properties.load(in);
             properties.values().removeIf(value -> value.toString().isBlank());
             return properties;
-        } catch (IOException e) { throw new UncheckedIOException(source, e); }
+        } catch (IOException e) {
+            throw new UncheckedIOException(source, e);
+        }
     }
 }

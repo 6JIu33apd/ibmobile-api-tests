@@ -4,15 +4,13 @@ import io.qameta.allure.*;
 import io.restassured.RestAssured;
 import io.restassured.path.json.JsonPath;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import ru.avangard.qa.ibmobile.api.*;
 import ru.avangard.qa.ibmobile.config.Config;
 
 import java.lang.annotation.*;
 import java.util.Arrays;
-import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assumptions.abort;
+import static org.junit.jupiter.api.Assumptions.*;
 
 /**
  * Контур, ключ логина и сессия одного кейса.
@@ -27,7 +25,12 @@ public abstract class BaseTest {
     void setUp(TestInfo testInfo) {
         Allure.getLifecycle().updateTest(result -> result.setName(testInfo.getDisplayName()));
         var method = testInfo.getTestMethod().orElseThrow();
-        Config.setEnv(method.isAnnotationPresent(Prod.class) ? "prod" : method.isAnnotationPresent(PreProd.class) ? "preprod" : "dev");
+        var tags = Arrays.stream(method.getAnnotationsByType(Tag.class)).map(Tag::value).toList();
+        if (tags.contains("prod") && tags.contains("preprod"))
+            throw new IllegalStateException("Указано несколько контуров");
+        String env = tags.contains("prod") ? "prod" : tags.contains("preprod") ? "preprod" : null;
+        assumeTrue(env == null || env.equals(System.getProperty("env")), "Контур запрещен: " + env);
+        Config.setEnv(env);
         Login login = method.getAnnotation(Login.class);
         if (!method.isAnnotationPresent(NoLogin.class))
             Session.open(login != null ? login.value() : null);
@@ -44,20 +47,6 @@ public abstract class BaseTest {
     protected static <T> T find(JsonPath response, String path) {
         T value = response.get(path);
         return value != null ? value : abort("Нет данных: " + path);
-    }
-
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD, ElementType.TYPE})
-    @ResourceLock("preprod")
-    @Tag("preprod")
-    public @interface PreProd {
-    }
-
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD, ElementType.TYPE})
-    @ResourceLock("prod")
-    @Tag("prod")
-    public @interface Prod {
     }
 
     @Retention(RetentionPolicy.RUNTIME)

@@ -1,5 +1,6 @@
 package ru.avangard.qa.ibmobile.core;
 
+import io.qameta.allure.Allure;
 import io.restassured.response.Response;
 import ru.avangard.qa.ibmobile.config.Config;
 
@@ -25,7 +26,7 @@ public record Session(Response loginResponse) {
 
     public Response logout() {
         Response response = given().delete(AUTH_LOGOUT.path());
-        success(response);
+        Allure.step("Проверка логаута", () -> success(response));
         CURRENT.remove();
         return response;
     }

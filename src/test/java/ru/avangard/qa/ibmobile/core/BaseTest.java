@@ -27,10 +27,10 @@ public abstract class BaseTest {
     void setUp(TestInfo testInfo) {
         Allure.getLifecycle().updateTest(result -> result.setName(testInfo.getDisplayName()));
         var method = testInfo.getTestMethod().orElseThrow();
-        var annotations = Stream.of(method, method.getDeclaringClass(), getClass()).flatMap(element -> Stream.of(element.getAnnotations())).map(Annotation::annotationType).toList();
-        Config.setEnv(annotations.contains(Prod.class) ? "prod" : annotations.contains(PreProd.class) ? "preprod" : "dev");
+        Config.setEnv(method.isAnnotationPresent(Prod.class) ? "prod" : method.isAnnotationPresent(PreProd.class) ? "preprod" : "dev");
         Login login = method.getAnnotation(Login.class);
-        Session.open(login != null ? login.value() : null);
+        if (!method.isAnnotationPresent(NoLogin.class))
+            Session.open(login != null ? login.value() : null);
     }
 
     @AfterEach

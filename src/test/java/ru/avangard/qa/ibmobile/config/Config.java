@@ -20,7 +20,9 @@ public final class Config {
 
     public static String get(String key) {
         return Objects.requireNonNull(CACHE.computeIfAbsent(ENV.get(), env ->
-                load(Path.of(System.getProperty("user.home"), ".ibmobile", env + ".properties").toUri().toString())).getProperty(key));
+                        load(Path.of(System.getProperty("user.home"), ".ibmobile", env + ".properties")
+                                .toUri().toString())).getProperty(key),
+                "Отсутствует параметр " + key + " для контура " + ENV.get());
     }
 
     public static Properties load(String source) {

@@ -26,6 +26,7 @@ public record Session(Response loginResponse) {
     public Response logout() {
         Response response = given().delete(AUTH_LOGOUT.path());
         success(response);
+        CURRENT.remove();
         return response;
     }
 

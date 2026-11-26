@@ -18,7 +18,18 @@ import java.util.*;
 import static io.restassured.http.ContentType.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.fail;
-import static ru.avangard.qa.ibmobile.api.ResponseCheck.success;
+
+        //При последующем рефакторинге рекомендую придерживаться следующих принципов:
+        //Операция	Поведение фильтра
+        //Base URL	Подставляет из текущего контура
+        //uid	Добавляет при необходимости
+        //        Ticket	Добавляет, если тест не переопределил поведение
+        //Content-Type	Устанавливает стандартный, если тест не задал другой
+        //Allure	Записывает HTTP-обмен
+        //HTTP-статус	Проверяет стандартное ожидание
+        //SchemaDraft	Вызывает вспомогательный генератор
+        //
+        //Главный принцип: фильтр дополняет запрос, но не должен безусловно исправлять намеренно некорректный запрос, сформированный тестом.
 
 public final class HttpFilter implements Filter {
     public static final RestAssuredConfig CONFIG = RestAssuredConfig.config().httpClient(HttpClientConfig.httpClientConfig().connectTimeout(Duration.ofSeconds(10)).readTimeout(Duration.ofMinutes(2))).jsonConfig(JsonConfig.jsonConfig().numberReturnType(NumberReturnType.BIG_DECIMAL));
@@ -45,7 +56,8 @@ public final class HttpFilter implements Filter {
             Response response = ALLURE.filter(request, responseSpec, context);
             if (response.statusCode() != 200)
                 fail("Ошибка сервера: HTTP %s, %s %s: %s", response.statusCode(), request.getMethod(), request.getUserDefinedPath(), response.asString());
-            if (!Boolean.getBoolean("schemaDraft") && success(response)) SchemaDraft.capture(endpoint, response);
+            if (!Boolean.getBoolean("schemaDraft.skip"))
+                SchemaDraft.capture(endpoint, response);
             return response;
         });
     }

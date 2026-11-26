@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 
+import static ru.avangard.qa.ibmobile.api.ResponseCheck.success;
+
 public final class SchemaDraft {
     private static final ObjectMapper JSON = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final Path SAMPLES = Path.of(".schema-samples/samples");
@@ -17,8 +19,11 @@ public final class SchemaDraft {
         try {
             String body = response.asString();
             JsonNode json = JSON.readTree(body);
-            if (json.isContainerNode())
-                save(SAMPLES.resolve(endpoint.name().toLowerCase(Locale.ROOT)).resolve(json.at("/doc/docType").asText("")), body);
+            if (!json.isContainerNode()) return;
+            if (json.isObject()) success(response);
+            save(SAMPLES.resolve(endpoint.name().toLowerCase(Locale.ROOT))
+                    .resolve(json.at("/doc/docType").asText("")), body);
+        } catch (AssertionError ignored) {
         } catch (Exception e) {
             System.err.println("SchemaDraft: " + e);
         }
@@ -37,7 +42,7 @@ public final class SchemaDraft {
     }
 
     private static void save(Path dir, String content) throws IOException {
-        Files.writeString(Files.createDirectories(dir).resolve(UUID.randomUUID() + ".json"), content);
+        Files.writeString(Files.createDirectories(dir).resolve(UUID.nameUUIDFromBytes(content.getBytes()) + ".json"), content);
     }
 
     private static ObjectNode infer(List<JsonNode> values) {

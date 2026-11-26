@@ -13,17 +13,14 @@ public final class ResponseCheck {
     /**
      * Отсекает признаки отказа; структуру и обязательные поля проверяет схема.
      */
-    public static boolean success(Response response) {
+    public static void success(Response response) {
         var json = response.jsonPath();
         if (json.get("errorCode") != null
                 || Integer.valueOf(-1).equals(json.get("responseCode"))
                 || (json.get("resultCode") != null && !"SUCCESS".equals(json.get("resultCode")))
                 || Boolean.FALSE.equals(json.get("checkSuccess"))
-                || Boolean.TRUE.equals(json.get("secureCheck.errorExist"))) {
+                || Boolean.TRUE.equals(json.get("secureCheck.errorExist")))
             fail("Ответ содержит отказ: %s", response.asString());
-            return false;
-        }
-        return true;
     }
 
     public static void error(Response response, ErrorCode expected) {

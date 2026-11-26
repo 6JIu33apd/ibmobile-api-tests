@@ -14,12 +14,15 @@ import ru.avangard.qa.ibmobile.tests.Section;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static ru.avangard.qa.ibmobile.api.AuthMethod.SMSPWD;
 import static ru.avangard.qa.ibmobile.api.Endpoint.PREPARE_DOC;
+import static ru.avangard.qa.ibmobile.api.Endpoint.SEND_DOC;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.matchesSchema;
 
 @ResourceLock("prepared_doc")
@@ -31,20 +34,22 @@ class IbPayRubTest extends BaseTest {
     private final RequestSpecification request = given().formParam("doc_type", DOC_TYPE.toString());
     private final ObjectNode docContent = DocContent.load(DOC_TYPE);
 
-    static final Arguments[] FILES = {
-            argumentSet("без вложения", List.of()),
-            argumentSet("с вложением", List.of("image.png"))
-    };
+    static Stream<Arguments> files() {
+        return Stream.of(
+                arguments("без вложения", List.of()),
+                arguments("с вложением", List.of("image.png")));
+    }
 
-    static final Arguments[] TRANSFERS = {
-            argumentSet("себе в Т-Банк", "7710140679", "АО \"ТБанк\" г Москва", "044525974", "40817810800005857200"),
-            argumentSet("физлицу в Альфу", "7728168971", "АО \"Альфа-Банка\", г. Москва", "044525593", "40817810504981347375")
-    };
+    static Stream<Arguments> transfers() {
+        return Stream.of(
+                argumentSet("себе в Т-Банк", "7710140679", "АО \"ТБанк\" г Москва", "044525974", "40817810800005857200"),
+                argumentSet("другому в Альфу","7728168971", "АО \"Альфа-Банка\", г. Москва", "044525593", "40817810504981347375"));
+    }
 
     @ParameterizedTest(name = "Внешний рублевый перевод {argumentSetName}")
-    @FieldSource("TRANSFERS")
+    @MethodSource("transfers")
     void ibPayRub(String rCliInn, String rBankName, String rBankBic, String accCred) {
-        var amountDeb = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 1000), 2);
+        var amountDeb = BigDecimal.valueOf(ThreadLocalRandom.current().nextInt(101, 300), 2);
         docContent.put("amountDeb", amountDeb).put("accCred", accCred)
                 .put("RCliInn", rCliInn).put("RBankName", rBankName).put("RBankBic", rBankBic);
         DocContent.attach(request, docContent, "image.png");
@@ -55,7 +60,10 @@ class IbPayRubTest extends BaseTest {
             Allure.step("Счёт списания", () -> assertThat(prepared.<String>path("doc.accDeb")).isEqualTo(docContent.get("accDeb").asText()));
             Allure.step("Счёт зачисления", () -> assertThat(prepared.<String>path("doc.accCred")).isEqualTo(accCred));
         });
-        SendDoc.send(DOC_TYPE, SMSPWD, prepared);
+        var sent = Confirm.authMethod(SMSPWD, prepared).post(SEND_DOC.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(sent, SEND_DOC.schema(DOC_TYPE));
+        });
     }
 
     @Nested

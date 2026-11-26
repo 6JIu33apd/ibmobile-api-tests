@@ -67,6 +67,11 @@ public abstract class BaseTest {
     }
 
     @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    public @interface NoLogin {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     @Story("Негативные")
     @DisplayName("Негативные")

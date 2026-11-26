@@ -5,49 +5,66 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.response.Response;
 import ru.avangard.qa.ibmobile.api.Endpoint;
 
+import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static ru.avangard.qa.ibmobile.api.ResponseCheck.success;
-
 public final class SchemaDraft {
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    private static final Path SAMPLES = Path.of(".schema-samples/samples");
 
-    public static synchronized void capture(Endpoint endpoint, Object docType, Response response) {
-        if (Boolean.getBoolean("schemaDraft.skip")) return;
+    public static synchronized void capture(Endpoint endpoint, Response response) {
         try {
             String body = response.asString();
             JsonNode json = JSON.readTree(body);
-            if (!json.isContainerNode()) return;
-            if (json.isObject()) success(response);
-            String path = endpoint.name().toLowerCase() + (docType == null ? "" : "/" + docType);
-            Path directory = Files.createDirectories(Path.of(".schema-samples/schemas", path));
-            String name = UUID.nameUUIDFromBytes(body.getBytes(UTF_8)) + ".json";
-            Files.writeString(directory.resolve(name), body);
-            List<JsonNode> samples = new ArrayList<>(List.of(json));
-            for (var file : directory.toFile().listFiles(file -> file.isFile() && file.getName().endsWith(".json")))
-                if (!name.equals(file.getName())) samples.add(JSON.readTree(file));
-            JSON.writerWithDefaultPrettyPrinter().writeValue(Files.createDirectories(Path.of(".schema-samples/drafts/schemas", path)).resolve(name).toFile(),
-                    JSON.createObjectNode().put("$schema", "http://json-schema.org/draft-04/schema#").setAll(infer(samples)));
-        } catch (Exception | AssertionError ignored) {}
+            if (json.isContainerNode())
+                save(SAMPLES.resolve(endpoint.name().toLowerCase(Locale.ROOT)).resolve(json.at("/doc/docType").asText("")), body);
+        } catch (Exception e) {
+            System.err.println("SchemaDraft: " + e);
+        }
+    }
+
+    public static synchronized void infer() throws IOException {
+        if (!Files.exists(SAMPLES)) return;
+        try (var files = Files.find(SAMPLES, Integer.MAX_VALUE, (p, a) -> a.isRegularFile() && p.toString().endsWith(".json"))) {
+            for (var group : files.collect(java.util.stream.Collectors.groupingBy(Path::getParent)).entrySet()) {
+                var samples = new ArrayList<JsonNode>();
+                for (Path file : group.getValue()) samples.add(JSON.readTree(file.toFile()));
+                save(SAMPLES.resolveSibling("drafts").resolve(SAMPLES.relativize(group.getKey())),
+                        JSON.writerWithDefaultPrettyPrinter().writeValueAsString(infer(samples).put("$schema", "http://json-schema.org/draft-04/schema#")));
+            }
+        }
+    }
+
+    private static void save(Path dir, String content) throws IOException {
+        Files.writeString(Files.createDirectories(dir).resolve(UUID.randomUUID() + ".json"), content);
     }
 
     private static ObjectNode infer(List<JsonNode> values) {
-        ObjectNode schema = JSON.createObjectNode();
-        Set<String> types = new LinkedHashSet<>(values.stream()
-                .map(value -> value.isIntegralNumber() ? "integer" : value.getNodeType().name().toLowerCase()).toList());
-        if (types.contains("number")) types.remove("integer");
-        schema.set("type", JSON.valueToTree(types.size() == 1 ? types.iterator().next() : types));
-        List<JsonNode> objects = values.stream().filter(JsonNode::isObject).toList();
-        for (String field : objects.stream().flatMap(object -> object.properties().stream()).map(Map.Entry::getKey).distinct().toList()) {
-            List<JsonNode> present = objects.stream().map(object -> object.get(field)).filter(Objects::nonNull).toList();
-            schema.withObject("properties").set(field, infer(present));
-            if (present.size() == objects.size()) schema.withArray("required").add(field);
+        var types = new TreeSet<String>();
+        var fields = new TreeMap<String, List<JsonNode>>();
+        var items = new ArrayList<JsonNode>();
+        int objects = 0;
+        for (var value : values) {
+            types.add(value.isIntegralNumber() ? "integer" : value.getNodeType().name().toLowerCase(Locale.ROOT));
+            if (value.isArray()) value.forEach(items::add);
+            if (!value.isObject()) continue;
+            objects++;
+            for (var field : value.properties())
+                fields.computeIfAbsent(field.getKey(), k -> new ArrayList<>()).add(field.getValue());
         }
-        if (!objects.isEmpty()) schema.put("additionalProperties", false);
-        List<JsonNode> items = values.stream().filter(JsonNode::isArray).flatMap(JsonNode::valueStream).toList();
-        if (!items.isEmpty()) schema.set("items", infer(items)); // Пустые массивы требуют образца с элементами.
+        if (types.contains("number")) types.remove("integer");
+        ObjectNode schema = JSON.createObjectNode().set("type", JSON.valueToTree(types.size() == 1 ? types.first() : types));
+        if (objects > 0) schema.put("additionalProperties", false);
+        for (var field : fields.entrySet()) {
+            schema.withObject("properties").set(field.getKey(), infer(field.getValue()));
+            if (field.getValue().size() == objects) schema.withArray("required").add(field.getKey());
+        }
+        if (!items.isEmpty()) schema.set("items", infer(items));
         return schema;
+    }
+
+    static void main() throws IOException {
+        infer();
     }
 }

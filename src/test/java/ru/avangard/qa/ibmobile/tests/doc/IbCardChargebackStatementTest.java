@@ -17,6 +17,7 @@ import java.util.*;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
+import static ru.avangard.qa.ibmobile.api.AuthMethod.SMSPWD;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
 
@@ -39,11 +40,11 @@ class IbCardChargebackStatementTest extends BaseTest {
             argumentSet("иное", 7)
     };
 
-    @BeforeEach
-    void setCardId() {
-        DocContent.set(docContent, "cardId",
-                find(success(given().formParam("doc_type", DOC_TYPE.toString()).post(PRIOR_INFO.path())), "accountList.cards.flatten().id[0]"));
-    }
+//    @BeforeEach
+//    void setCardId() {
+//        DocContent.set(docContent, "cardId",
+////                find(success(given().formParam("doc_type", DOC_TYPE.toString()).post(PRIOR_INFO.path())), "accountList.cards.flatten().id[0]"));
+//    }
 
     @ParameterizedTest(name = "Заявление о несогласии с операцией по карте ({argumentSetName})")
     @FieldSource("CHARGEBACK_REASONS")
@@ -59,7 +60,10 @@ class IbCardChargebackStatementTest extends BaseTest {
             Allure.step("Список операций совпадает с запросом", () -> assertThat(prepared.<List<Number>>path("doc.opersList")).extracting(Number::longValue)
                     .containsExactlyElementsOf(docContent.withArray("opersList").valueStream().map(JsonNode::asLong).toList()));
         });
-        SendDoc.send(DOC_TYPE, AuthMethod.SMSPWD, prepared);
+        var sent = Confirm.authMethod(SMSPWD, prepared).post(SEND_DOC.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(sent, SEND_DOC.schema(DOC_TYPE));
+        });
     }
 
     @Nested

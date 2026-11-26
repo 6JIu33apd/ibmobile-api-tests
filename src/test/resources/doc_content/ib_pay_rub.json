@@ -1,8 +1,8 @@
 {
   "docNum": 12,
   "SCliInn":"644925094203",
-  "accDeb": "40817810800150910097",
-  "amountDeb": 20.0,
+  "accDeb": "40817810900002946310",
+  "amountDeb": 2.0,
   "RCliName": "Охота Нафилина",
   "RCliInn": "7710140679",
   "RBankName": "АО \"ТБанк\" г Москва",
@@ -12,6 +12,6 @@
   "ndPaytype": "0",
   "incomeCode": "",
   "incomeCodeDescription": "",
-  "lateCommEnabled": "true",
+  "lateCommEnabled": "false",
   "attachmentsList": []
 }

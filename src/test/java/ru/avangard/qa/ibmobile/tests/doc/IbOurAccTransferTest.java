@@ -19,6 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
+import static ru.avangard.qa.ibmobile.api.AuthMethod.SMSPWD;
 import static ru.avangard.qa.ibmobile.api.Endpoint.*;
 import static ru.avangard.qa.ibmobile.api.ErrorCode.*;
 import static ru.avangard.qa.ibmobile.api.ResponseCheck.*;
@@ -50,7 +51,10 @@ class IbOurAccTransferTest extends BaseTest {
             Allure.step("Счёт списания", () -> assertThat(prepared.<String>path("doc.accDeb")).isEqualTo(docContent.get("accDeb").asText()));
             Allure.step("Счёт зачисления", () -> assertThat(prepared.<String>path("doc.accCred")).isEqualTo(docContent.get("accCred").asText()));
         });
-        SendDoc.send(DOC_TYPE, method, prepared);
+        var sent = Confirm.authMethod(SMSPWD, prepared).post(SEND_DOC.path());
+        Allure.step("Проверки", () -> {
+            matchesSchema(sent, SEND_DOC.schema(DOC_TYPE));
+        });
     }
 
     @Nested @Negative
@@ -94,7 +98,7 @@ class IbOurAccTransferTest extends BaseTest {
     }
 
     private void setAccounts(String accDebCondition) {
-        var accList = success(given().post(ACC_LIST.path()));
+        var accList = given().post(ACC_LIST.path()).jsonPath();
         Map<String, Object> accDeb = find(accList, "accounts.account.findAll { " + accDebCondition + " }.max { it.otb }");
         DocContent.set(docContent, "accDeb", accDeb.get("code").toString());
         DocContent.set(docContent, "accCred", find(accList, "accounts.account.findAll { it.currency == '" + accDeb.get("currency")

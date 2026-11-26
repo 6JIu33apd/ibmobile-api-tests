@@ -23,19 +23,21 @@ class AccDetailsTest extends BaseTest {
     private JsonPath accList;
 
     @BeforeEach
-    void loadAccounts() { accList = success(given().post(ACC_LIST.path())); }
+    void loadAccounts() {
+        accList = given().post(ACC_LIST.path()).jsonPath();
+    }
 
     static final Arguments[] ACCOUNTS = {
-        argumentSet("рублёвый дебетовый", "it.cardAcc && !it.isCredit && it.currency == 'RUR'"),
-        argumentSet("валютный дебетовый", "it.cardAcc && !it.isCredit && it.currency != 'RUR'"),
-        argumentSet("рублёвый кредитный", "it.isCredit && it.currency == 'RUR'"),
-        argumentSet("валютный кредитный", "it.isCredit && it.currency != 'RUR'"),
-        argumentSet("рублёвый текущий", "it.currAcc && it.currency == 'RUR'"),
-        argumentSet("валютный текущий", "it.currAcc && it.currency != 'RUR'"),
-        argumentSet("депозитный", "it.idepAcc")
+            argumentSet("рублёвый дебетовый", "it.cardAcc && !it.isCredit && it.currency == 'RUR'"),
+            argumentSet("валютный дебетовый", "it.cardAcc && !it.isCredit && it.currency != 'RUR'"),
+            argumentSet("рублёвый кредитный", "it.isCredit && it.currency == 'RUR'"),
+            argumentSet("валютный кредитный", "it.isCredit && it.currency != 'RUR'"),
+            argumentSet("рублёвый текущий", "it.currAcc && it.currency == 'RUR'"),
+            argumentSet("валютный текущий", "it.currAcc && it.currency != 'RUR'"),
+            argumentSet("депозитный", "it.idepAcc")
     };
 
-    @ParameterizedTest(name = "Деталка счёта из списка счетов ({argumentSetName})")
+    @ParameterizedTest(name = "Деталка счёта ({argumentSetName})")
     @FieldSource("ACCOUNTS")
     void details(String condition) {
         String account = find(accList, "accounts.account.findAll { " + condition + " }.max { it.otb }?.code");
@@ -46,14 +48,16 @@ class AccDetailsTest extends BaseTest {
         });
     }
 
-    @Nested @Negative
+    @Nested
+    @Negative
     class Negatives {
         static final Arguments[] INVALID_ACCOUNTS = {
-            argumentSet("без счёта", Map.of()),
-            argumentSet("некорректный номер счёта", Map.of("account", "40810817000000002879"))
+                argumentSet("без счёта", Map.of()),
+                argumentSet("с некорректным номером счёта", Map.of("account", "40810817000000002879")),
+                argumentSet("с чужим номером счёта", Map.of("account", "40817810700000964730"))
         };
 
-        @ParameterizedTest(name = "Запрос с некорректными параметрами отклоняется ({argumentSetName})")
+        @ParameterizedTest(name = "Запрос {argumentSetName} отклоняется")
         @FieldSource("INVALID_ACCOUNTS")
         void invalidAccount(Map<String, String> params) {
             error(given().formParams(params).post(ACC_DETAILS.path()), INVALID_PARAMETERS);

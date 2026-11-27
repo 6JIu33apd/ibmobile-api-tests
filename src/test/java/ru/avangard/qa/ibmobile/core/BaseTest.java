@@ -25,7 +25,7 @@ public abstract class BaseTest {
     void setUp(TestInfo testInfo) {
         Allure.getLifecycle().updateTest(result -> result.setName(testInfo.getDisplayName()));
         var method = testInfo.getTestMethod().orElseThrow();
-        var tags = Arrays.stream(method.getAnnotationsByType(Tag.class)).map(Tag::value).toList();
+        var tags = testInfo.getTags();
         if (tags.contains("prod") && tags.contains("preprod"))
             throw new IllegalStateException("Указано несколько контуров");
         String env = tags.contains("prod") ? "prod" : tags.contains("preprod") ? "preprod" : null;

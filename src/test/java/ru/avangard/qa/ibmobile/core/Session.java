@@ -26,7 +26,7 @@ public record Session(Response loginResponse) {
 
     public Response logout() {
         Response response = given().delete(AUTH_LOGOUT.path());
-        Allure.step("Проверка логаута", () -> success(response));
+        matchesSchema(response, AUTH_LOGOUT.schema());
         CURRENT.remove();
         return response;
     }

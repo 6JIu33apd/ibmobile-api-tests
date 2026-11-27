@@ -15,14 +15,15 @@ public final class SchemaDraft {
     private static final ObjectMapper JSON = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final Path SAMPLES = Path.of(".schema-samples/samples");
 
-    public static synchronized void capture(Endpoint endpoint, Response response) {
+    public static synchronized void capture(Endpoint endpoint, Object docType, Response response) {
         try {
             String body = response.asString();
             JsonNode json = JSON.readTree(body);
-            if (!json.isContainerNode()) return;
+            if (json == null || !json.isContainerNode()) return;
             if (json.isObject()) success(response);
-            save(SAMPLES.resolve(endpoint.name().toLowerCase(Locale.ROOT))
-                    .resolve(json.at("/doc/docType").asText("")), body);
+            String type = endpoint == Endpoint.PRIOR_INFO ? (String) docType :
+                    endpoint == Endpoint.SEND_DOC || endpoint == Endpoint.PREPARE_DOC ? json.at("/doc/docType").textValue() : null;
+            save(SAMPLES.resolve(endpoint.name().toLowerCase()).resolve(Objects.toString(type, "")), body);
         } catch (AssertionError ignored) {
         } catch (Exception e) {
             System.err.println("SchemaDraft: " + e);

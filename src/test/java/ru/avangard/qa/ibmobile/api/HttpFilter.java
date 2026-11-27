@@ -19,18 +19,6 @@ import static io.restassured.http.ContentType.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.fail;
 
-        //При последующем рефакторинге рекомендую придерживаться следующих принципов:
-        //Операция	Поведение фильтра
-        //Base URL	Подставляет из текущего контура
-        //uid	Добавляет при необходимости
-        //        Ticket	Добавляет, если тест не переопределил поведение
-        //Content-Type	Устанавливает стандартный, если тест не задал другой
-        //Allure	Записывает HTTP-обмен
-        //HTTP-статус	Проверяет стандартное ожидание
-        //SchemaDraft	Вызывает вспомогательный генератор
-        //
-        //Главный принцип: фильтр дополняет запрос, но не должен безусловно исправлять намеренно некорректный запрос, сформированный тестом.
-
 public final class HttpFilter implements Filter {
     public static final RestAssuredConfig CONFIG = RestAssuredConfig.config().httpClient(HttpClientConfig.httpClientConfig().connectTimeout(Duration.ofSeconds(10)).readTimeout(Duration.ofMinutes(2))).jsonConfig(JsonConfig.jsonConfig().numberReturnType(NumberReturnType.BIG_DECIMAL));
     private static final AllureRestAssured ALLURE = new AllureRestAssured();
@@ -41,24 +29,33 @@ public final class HttpFilter implements Filter {
         Endpoint endpoint = Arrays.stream(ENDPOINTS)
                 .filter(e -> e.path().equals(request.getUserDefinedPath()) && e.method.name().equals(request.getMethod()))
                 .findFirst().orElseThrow();
+
         return Allure.step("Запрос " + request.getUserDefinedPath(), () -> {
-            request.baseUri(Config.get("baseurl")).formParam("uid", "594874414557102");
-            if (endpoint != Endpoint.AUTH_LOGIN && !(request.getAuthenticationScheme() instanceof ExplicitNoAuthScheme) && !request.getFormParams().containsKey("ticket"))
-                request.formParam("ticket", Session.current().ticket());
-
-            if (endpoint.contentType == MULTIPART) {
-                request.contentType(MULTIPART);
-                var params = new LinkedHashMap<>(request.getFormParams());
-                params.forEach((name, value) -> request.removeFormParam(name).multiPart(name, value.toString(), TEXT.withCharset(UTF_8)));
-                Allure.attachment("Параметры запроса", params.toString());
-            } else request.contentType(endpoint.contentType.withCharset(UTF_8));
-
+            Object docType = request.getFormParams().get("doc_type");
+            prepare(request, endpoint);
             Response response = ALLURE.filter(request, responseSpec, context);
-            if (response.statusCode() != 200)
+            if (responseSpec.getStatusCode() == null && response.statusCode() != 200)
                 fail("Ошибка сервера: HTTP %s, %s %s: %s", response.statusCode(), request.getMethod(), request.getUserDefinedPath(), response.asString());
-            if (!Boolean.getBoolean("schemaDraft.skip"))
-                SchemaDraft.capture(endpoint, response);
+            if (response.statusCode() == 200 && !Boolean.getBoolean("schemaDraft.skip"))
+                SchemaDraft.capture(endpoint, docType, response);
             return response;
         });
+    }
+
+    private static void prepare(FilterableRequestSpecification request, Endpoint endpoint) {
+        request.baseUri(Config.get("baseurl")).formParam("uid", "594874414557102");
+        if (endpoint != Endpoint.AUTH_LOGIN && !(request.getAuthenticationScheme() instanceof ExplicitNoAuthScheme) && !request.getFormParams().containsKey("ticket"))
+            request.formParam("ticket", Session.current().ticket());
+
+        if (endpoint.contentType == MULTIPART) {
+            request.contentType(MULTIPART);
+            multipart(request);
+        } else request.contentType(endpoint.contentType.withCharset(UTF_8));
+    }
+
+    private static void multipart(FilterableRequestSpecification request) {
+        var params = new LinkedHashMap<>(request.getFormParams());
+        params.forEach((name, value) -> request.removeFormParam(name).multiPart(name, value, TEXT.withCharset(UTF_8)));
+        Allure.attachment("Параметры запроса", params.toString());
     }
 }
